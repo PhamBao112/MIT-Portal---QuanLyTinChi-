@@ -124,6 +124,32 @@ public class TruongHocDAO {
         return list;
     }
 
+    // Lấy danh sách học kỳ MÀ SINH VIÊN NÀY THỰC SỰ CÓ ĐĂNG KÝ (không hiện các kỳ trước khi SV nhập học)
+    public List<String> getHocKyCuaSinhVien(String maSV) {
+        List<String> list = new ArrayList<>();
+        String sql = "SELECT DISTINCT h.MaHK, h.TenHK, h.NamHoc " +
+                     "FROM HOC_KY h " +
+                     "JOIN LOP_HOC_PHAN lhp ON lhp.MaHK = h.MaHK " +
+                     "JOIN KET_QUA_DANG_KY kq ON kq.MaLHP = lhp.MaLHP " +
+                     "WHERE kq.MaSV = ? " +
+                     "ORDER BY h.NamHoc DESC, h.MaHK DESC";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maSV);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(rs.getString("MaHK") + " - " + rs.getString("TenHK"));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    // Lấy MaHK gần đây nhất mà sinh viên có đăng ký (dùng cho Trang Chủ Tổng Quan - không cần combo chọn)
+    public String getHocKyGanNhatCuaSinhVien(String maSV) {
+        List<String> list = getHocKyCuaSinhVien(maSV);
+        if (list.isEmpty()) return null;
+        return list.get(0).split("-")[0].trim();
+    }
+
     // Lấy thông tin phiếu thu (Tổng tiền, đã đóng) của SV theo Học kỳ
     public double[] getThongTinCongNo(String maSV, String maHK) {
         double[] info = new double[]{-1.0, 0.0}; 
@@ -140,33 +166,46 @@ public class TruongHocDAO {
     }
 
     // NGHIỆP VỤ MỚI: Lấy toàn bộ lịch sử công nợ của Sinh viên để hiển thị lên Bảng
-    public ResultSet getLichSuCongNo(String maSV) {
+    // FIX #3: trả về List thay vì ResultSet sống - trước đây Connection không bao giời được đóng (connection leak)
+    public List<Object[]> getLichSuCongNo(String maSV) {
+        List<Object[]> ket = new ArrayList<>();
         String sql = "SELECT c.MaHK, h.TenHK, c.TongTienPhaiDong, c.SoTienDaDong, c.TrangThai " +
                      "FROM CONG_NO_HOC_PHI c " +
                      "LEFT JOIN HOC_KY h ON c.MaHK = h.MaHK " +
                      "WHERE c.MaSV = ? ORDER BY c.MaHK DESC";
-        try {
-            Connection conn = DBConnect.getConnection();
-            PreparedStatement ps = conn.prepareStatement(sql);
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maSV);
-            return ps.executeQuery();
-        } catch (SQLException e) { e.printStackTrace(); return null; }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ket.add(new Object[]{
+                        rs.getString("MaHK"), rs.getString("TenHK"),
+                        rs.getDouble("TongTienPhaiDong"), rs.getDouble("SoTienDaDong"), rs.getString("TrangThai")
+                    });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
     }
 
     // Lấy chi tiết các môn học đã đăng ký trong kỳ đó để đổ vào JTable
-    public ResultSet getChiTietDangKyTrongKy(String maSV, String maHK) {
+    // FIX #3: trả về List thay vì ResultSet sống - trước đây Connection không bao giời được đóng (connection leak)
+    public List<Object[]> getChiTietDangKyTrongKy(String maSV, String maHK) {
+        List<Object[]> ket = new ArrayList<>();
         String sql = "SELECT m.MaMon, m.TenMon, m.SoTinChi " +
                      "FROM KET_QUA_DANG_KY kq " +
                      "JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP " +
                      "JOIN MON_HOC m ON lhp.MaMon = m.MaMon " +
                      "WHERE kq.MaSV = ? AND lhp.MaHK = ?";
-        try {
-            Connection conn = DBConnect.getConnection();
-            PreparedStatement ps = conn.prepareStatement(sql);
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maSV);
             ps.setString(2, maHK);
-            return ps.executeQuery(); 
-        } catch (SQLException e) { e.printStackTrace(); return null; }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ket.add(new Object[]{ rs.getString("MaMon"), rs.getString("TenMon"), rs.getInt("SoTinChi") });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
     }
 
     // NGHIỆP VỤ MỚI: Cập nhật CSDL khi sinh viên bấm Thanh Toán

@@ -23,7 +23,7 @@ public class AdminLopHocPhanPanel extends JPanel {
     private DefaultTableModel model;
     private JTable table;
     
-    private JTextField txtMaLHP, txtMonHoc, txtHK, txtPhong, txtSucChua;
+    private JTextField txtMaLHP, txtMonHoc, txtHK, txtPhong, txtSucChua, txtMaGV;
     private JComboBox<String> cbThu, cbTiet;
 
     public AdminLopHocPhanPanel() {
@@ -46,7 +46,7 @@ public class AdminLopHocPhanPanel extends JPanel {
         lblTblTitle.setForeground(UIUtils.TEXT_MAIN);
         tableHeader.add(lblTblTitle, BorderLayout.WEST);
 
-        String[] cols = {"Mã LHP", "Mã Môn", "Tên Môn", "Thứ", "Tiết", "Phòng", "Sức chứa", "Đã ĐK"};
+        String[] cols = {"Mã LHP", "Mã Môn", "Tên Môn", "Thứ", "Tiết", "Phòng", "Sức chứa", "Đã ĐK", "Mã GV"};
         model = new DefaultTableModel(cols, 0) {
             private static final long serialVersionUID = 1L;
             public boolean isCellEditable(int r, int c) { return false; }
@@ -99,10 +99,11 @@ public class AdminLopHocPhanPanel extends JPanel {
         txtMaLHP = UIUtils.createInput();
         txtMonHoc = UIUtils.createInput();
         txtHK = UIUtils.createInput();
-        cbThu = new JComboBox<>(new String[]{"2", "3", "4", "5", "6", "7", "Chủ Nhật"}); cbThu.setFont(UIUtils.FONT_NORMAL); cbThu.setBackground(Color.WHITE);
+        cbThu = new JComboBox<>(new String[]{"2", "3", "4", "5", "6", "7"}); cbThu.setFont(UIUtils.FONT_NORMAL); cbThu.setBackground(Color.WHITE); // Bo "Chu Nhat": LichHocPanel chi ve luoi Thu 2-7, chon Chu Nhat se bi an mat khoi TKB sinh vien
         cbTiet = new JComboBox<>(new String[]{"1-3", "1-4", "4-6", "7-9", "7-10", "10-12"}); cbTiet.setFont(UIUtils.FONT_NORMAL); cbTiet.setBackground(Color.WHITE);
         txtPhong = UIUtils.createInput();
         txtSucChua = UIUtils.createInput();
+        txtMaGV = UIUtils.createInput();
 
         inputGrid.add(createCompactFormRow("Mã Lớp Học Phần:", txtMaLHP));
         inputGrid.add(createCompactFormRow("Mã Môn Học:", txtMonHoc));
@@ -112,7 +113,7 @@ public class AdminLopHocPhanPanel extends JPanel {
         inputGrid.add(createCompactFormRow("Ca / Tiết Học:", cbTiet));
         inputGrid.add(createCompactFormRow("Phòng Học:", txtPhong));
         inputGrid.add(createCompactFormRow("Sức Chứa Tối Đa:", txtSucChua));
-        inputGrid.add(new JLabel("")); // Spacer lấp đầy lưới
+        inputGrid.add(createCompactFormRow("Mã Giảng Viên (bắt buộc):", txtMaGV));
 
         // ========================================================
         // 3. CÁC NÚT HÀNH ĐỘNG MÀU SẮC ĐẬM ĐÀ
@@ -148,6 +149,7 @@ public class AdminLopHocPhanPanel extends JPanel {
                 cbTiet.setSelectedItem(model.getValueAt(r, 4) != null ? model.getValueAt(r, 4).toString() : "1-3");
                 txtPhong.setText(model.getValueAt(r, 5) != null ? model.getValueAt(r, 5).toString() : "");
                 txtSucChua.setText(model.getValueAt(r, 6) != null ? model.getValueAt(r, 6).toString() : "");
+                txtMaGV.setText(model.getValueAt(r, 8) != null ? model.getValueAt(r, 8).toString() : "");
             }
         });
 
@@ -158,15 +160,25 @@ public class AdminLopHocPhanPanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "Mã Lớp học phần và Mã Môn học không được để trống!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            String sql = "INSERT INTO LOP_HOC_PHAN (MaLHP, MaMon, MaHK, Thu, TietHoc, PhongHoc, SucChua) VALUES (?, ?, ?, ?, ?, ?, ?)";
-            executeDB(sql, "Mở lớp học phần mới", txtMaLHP.getText().trim(), txtMonHoc.getText().trim(), txtHK.getText().trim(), cbThu.getSelectedItem(), cbTiet.getSelectedItem(), txtPhong.getText().trim(), txtSucChua.getText().trim());
+            // FIX #1: bat buoc phai co MaGV, neu khong lop se KHONG hien trong tab Dang Ky cua sinh vien
+            // (DangKyPanel dung INNER JOIN GIANG_VIEN nen MaGV = NULL se bi loai khoi ket qua)
+            if (txtMaGV.getText().isBlank()) {
+                JOptionPane.showMessageDialog(this, "Bắt buộc phải nhập Mã Giảng Viên!\nNếu để trống, lớp học phần sẽ KHÔNG hiển thị trong trang Đăng Ký của sinh viên.", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String sql = "INSERT INTO LOP_HOC_PHAN (MaLHP, MaMon, MaHK, Thu, TietHoc, PhongHoc, SucChua, MaGV) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            executeDB(sql, "Mở lớp học phần mới", txtMaLHP.getText().trim(), txtMonHoc.getText().trim(), txtHK.getText().trim(), cbThu.getSelectedItem(), cbTiet.getSelectedItem(), txtPhong.getText().trim(), txtSucChua.getText().trim(), txtMaGV.getText().trim());
             updateData(currentMaHK);
         });
 
         btnUpdate.addActionListener(e -> {
             if (txtMaLHP.getText().isBlank()) return;
-            String sql = "UPDATE LOP_HOC_PHAN SET MaMon=?, MaHK=?, Thu=?, TietHoc=?, PhongHoc=?, SucChua=? WHERE MaLHP=?";
-            executeDB(sql, "Cập nhật lịch học", txtMonHoc.getText().trim(), txtHK.getText().trim(), cbThu.getSelectedItem(), cbTiet.getSelectedItem(), txtPhong.getText().trim(), txtSucChua.getText().trim(), txtMaLHP.getText().trim());
+            if (txtMaGV.getText().isBlank()) {
+                JOptionPane.showMessageDialog(this, "Bắt buộc phải nhập Mã Giảng Viên!\nNếu để trống, lớp học phần sẽ KHÔNG hiển thị trong trang Đăng Ký của sinh viên.", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String sql = "UPDATE LOP_HOC_PHAN SET MaMon=?, MaHK=?, Thu=?, TietHoc=?, PhongHoc=?, SucChua=?, MaGV=? WHERE MaLHP=?";
+            executeDB(sql, "Cập nhật lịch học", txtMonHoc.getText().trim(), txtHK.getText().trim(), cbThu.getSelectedItem(), cbTiet.getSelectedItem(), txtPhong.getText().trim(), txtSucChua.getText().trim(), txtMaGV.getText().trim(), txtMaLHP.getText().trim());
             updateData(currentMaHK);
         });
 
@@ -192,7 +204,7 @@ public class AdminLopHocPhanPanel extends JPanel {
         txtHK.setText(maHK); // Cập nhật luôn ô text
         model.setRowCount(0);
         
-        String sql = "SELECT lhp.MaLHP, lhp.MaMon, m.TenMon, lhp.Thu, lhp.TietHoc, lhp.PhongHoc, lhp.SucChua, " +
+        String sql = "SELECT lhp.MaLHP, lhp.MaMon, m.TenMon, lhp.Thu, lhp.TietHoc, lhp.PhongHoc, lhp.SucChua, lhp.MaGV, " +
                      "(SELECT COUNT(*) FROM KET_QUA_DANG_KY WHERE MaLHP = lhp.MaLHP) as DaDK " +
                      "FROM LOP_HOC_PHAN lhp JOIN MON_HOC m ON lhp.MaMon = m.MaMon WHERE lhp.MaHK = ?";
         try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -201,7 +213,8 @@ public class AdminLopHocPhanPanel extends JPanel {
             while (rs.next()) {
                 model.addRow(new Object[]{
                     rs.getString("MaLHP"), rs.getString("MaMon"), rs.getString("TenMon"), rs.getString("Thu"),
-                    rs.getString("TietHoc"), rs.getString("PhongHoc"), rs.getInt("SucChua"), rs.getInt("DaDK")
+                    rs.getString("TietHoc"), rs.getString("PhongHoc"), rs.getInt("SucChua"), rs.getInt("DaDK"),
+                    rs.getString("MaGV")
                 });
             }
         } catch (Exception e) {
@@ -222,7 +235,7 @@ public class AdminLopHocPhanPanel extends JPanel {
     }
 
     private void clearForm() {
-        txtMaLHP.setText(""); txtMonHoc.setText(""); txtPhong.setText(""); txtSucChua.setText("");
+        txtMaLHP.setText(""); txtMonHoc.setText(""); txtPhong.setText(""); txtSucChua.setText(""); txtMaGV.setText("");
         cbThu.setSelectedIndex(0); cbTiet.setSelectedIndex(0);
         table.clearSelection();
     }

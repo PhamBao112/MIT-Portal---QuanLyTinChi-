@@ -18,9 +18,10 @@ public class DiemPanel extends JPanel {
     
     private String currentMaSV;
     
-    // Biến lưu Học kỳ hiện tại
-    private String currentMaHK = "HK1_2425";
-    private String currentTenHK = "Học kỳ 1 – 2024-2025";
+    // Biến lưu Học kỳ hiện tại (rỗng ban đầu - tự resolve theo từng SV qua combo riêng của trang này)
+    private String currentMaHK = "";
+    private String currentTenHK = "";
+    private JComboBox<String> cbHocKy;
     
     // Các biến lưu trữ thống kê theo TỪNG HỌC KỲ
     private int tcKyNay = 0;
@@ -43,23 +44,65 @@ public class DiemPanel extends JPanel {
         buildUI();
     }
     
-    // =====================================================================
-    // HÀM NHẬN TÍN HIỆU TỪ COMBOBOX ĐỂ ĐỒNG BỘ HỌC KỲ
-    // =====================================================================
-    public void updateData(String maHK, String fullTenHK) {
-        this.currentMaHK = maHK;
-        if (fullTenHK != null && fullTenHK.contains("-")) {
-            this.currentTenHK = fullTenHK.substring(fullTenHK.indexOf("-") + 1).trim(); 
-        } else {
-            this.currentTenHK = fullTenHK;
+    // Combo Hoc ky rieng cua trang nay - chi liet ke nhung hoc ky SV nay thuc su co dang ky, khong con nhan tu combo global nua
+    private void loadHocKyOptions(JComboBox<String> combo) {
+        combo.removeAllItems();
+        try (Connection conn = DBConnect.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "SELECT DISTINCT h.MaHK, h.TenHK FROM HOC_KY h " +
+                 "JOIN LOP_HOC_PHAN lhp ON lhp.MaHK = h.MaHK " +
+                 "JOIN KET_QUA_DANG_KY kq ON kq.MaLHP = lhp.MaLHP " +
+                 "WHERE kq.MaSV = ? ORDER BY h.NamHoc DESC, h.MaHK DESC")) {
+            ps.setString(1, currentMaSV);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) combo.addItem(rs.getString("MaHK") + " - " + rs.getString("TenHK"));
+        } catch (Exception e) { e.printStackTrace(); }
+
+        if (combo.getItemCount() == 0) {
+            currentMaHK = "";
+            currentTenHK = "Chua co du lieu";
+            return;
         }
-        buildUI(); // Vẽ lại toàn bộ giao diện và tải lại CSDL
+        String target = null;
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            String item = combo.getItemAt(i);
+            if (item.startsWith(currentMaHK + " ")) { target = item; break; }
+        }
+        if (target == null) target = combo.getItemAt(0);
+        combo.setSelectedItem(target); // set truoc khi gan listener nen khong ban su kien
+        currentMaHK = target.split("-")[0].trim();
+        currentTenHK = target.substring(target.indexOf("-") + 1).trim();
     }
 
     private void buildUI() {
         // Xóa sạch UI cũ trước khi vẽ lại
         removeAll();
-        
+
+        // 0. COMBO HỌC KỲ RIÊNG CỦA TRANG NÀY (chỉ liệt kê học kỳ SV này thực sự có đăng ký)
+        JPanel topBar = new JPanel(new BorderLayout());
+        topBar.setBackground(UIUtils.BG_APP);
+        JLabel lblPageTitle = new JLabel("Bảng Kết Quả Học Tập");
+        lblPageTitle.setFont(UIUtils.FONT_TITLE);
+        topBar.add(lblPageTitle, BorderLayout.WEST);
+
+        JPanel hkBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        hkBox.setBackground(UIUtils.BG_APP);
+        hkBox.add(new JLabel("Học kỳ:"));
+        cbHocKy = new JComboBox<>();
+        loadHocKyOptions(cbHocKy); // populate + resolve currentMaHK/currentTenHK trước, chưa gắn listener nên không bắn sự kiện
+        cbHocKy.setFont(UIUtils.FONT_BOLD);
+        cbHocKy.setBackground(UIUtils.WHITE);
+        cbHocKy.addActionListener(e -> {
+            String sel = (String) cbHocKy.getSelectedItem();
+            if (sel != null && sel.contains("-")) {
+                currentMaHK = sel.split("-")[0].trim();
+                currentTenHK = sel.substring(sel.indexOf("-") + 1).trim();
+                buildUI();
+            }
+        });
+        hkBox.add(cbHocKy);
+        topBar.add(hkBox, BorderLayout.EAST);
+
         // 1. TẢI DỮ LIỆU TỪ CSDL ĐỂ TÍNH TOÁN THỐNG KÊ CHO KỲ HIỆN TẠI
         loadStatsData();
 
@@ -139,7 +182,14 @@ public class DiemPanel extends JPanel {
         tableContainer.add(header, BorderLayout.NORTH); 
         tableContainer.add(scrollTable, BorderLayout.CENTER);
 
-        add(topStatsPanel, BorderLayout.NORTH);
+        JPanel northWrapper = new JPanel();
+        northWrapper.setLayout(new BoxLayout(northWrapper, BoxLayout.Y_AXIS));
+        northWrapper.setBackground(UIUtils.BG_APP);
+        northWrapper.add(topBar);
+        northWrapper.add(Box.createVerticalStrut(15));
+        northWrapper.add(topStatsPanel);
+
+        add(northWrapper, BorderLayout.NORTH);
         add(tableContainer, BorderLayout.CENTER);
         
         revalidate();
@@ -156,10 +206,12 @@ public class DiemPanel extends JPanel {
         try (Connection conn = DBConnect.getConnection()) {
             if (conn == null) return;
 
-            // Câu SQL lấy tổng tín chỉ những môn ĐẠT và Tính GPA trung bình những môn ĐÃ CÓ ĐIỂM trong kỳ được chọn
+            // FIX #5: GPA phai tinh theo TRONG SO tin chi: SUM(diem * tinchi) / SUM(tinchi),
+            // khong duoc dung AVG() don gian vi AVG coi moi mon co trong so nhu nhau du 1TC hay 4TC.
             String sqlDiem = "SELECT " +
                              "ISNULL(SUM(CASE WHEN kq.TrangThai = N'Đạt' THEN CAST(m.SoTinChi AS INT) ELSE 0 END), 0) as TCDat, " +
-                             "AVG(CAST(kq.DiemTongKet AS FLOAT)) as DiemTB " +
+                             "SUM(CAST(kq.DiemTongKet AS FLOAT) * CAST(m.SoTinChi AS FLOAT)) as TongDiemNhanTC, " +
+                             "SUM(CAST(m.SoTinChi AS FLOAT)) as TongTCCoDiem " +
                              "FROM KET_QUA_DANG_KY kq " +
                              "JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP " +
                              "JOIN MON_HOC m ON lhp.MaMon = m.MaMon " +
@@ -171,7 +223,8 @@ public class DiemPanel extends JPanel {
                 ResultSet rs = ps.executeQuery();
                 if (rs.next()) { 
                     tcKyNay = rs.getInt("TCDat"); 
-                    gpa10 = rs.getDouble("DiemTB"); // Sẽ trả về 0 nếu chưa có môn nào có điểm
+                    double tongTCCoDiem = rs.getDouble("TongTCCoDiem");
+                    gpa10 = tongTCCoDiem > 0 ? rs.getDouble("TongDiemNhanTC") / tongTCCoDiem : 0.0; // GPA co trong so tin chi
                     
                     if (gpa10 > 0) { 
                         gpa4 = (gpa10 / 10.0) * 4.0;

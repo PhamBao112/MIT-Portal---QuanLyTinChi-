@@ -30,7 +30,6 @@ public class StudentPanel extends JPanel {
     private DashboardPanel dashboardPanel;
     private DangKyPanel dangKyPanel;
     private DiemPanel diemPanel; // THÊM BIẾN BẢNG ĐIỂM
-    private JComboBox<String> cbHocKy;
 
     public StudentPanel(StudentManagerService service, String maSV) {
         this.service = service;
@@ -105,24 +104,7 @@ public class StudentPanel extends JPanel {
         lblHeaderTitle = new JLabel("Trang Chủ Tổng Quan");
         lblHeaderTitle.setFont(UIUtils.FONT_TITLE);
         header.add(lblHeaderTitle, BorderLayout.WEST);
-
-        JPanel hkPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        hkPanel.setBackground(UIUtils.WHITE);
-        hkPanel.add(new JLabel("Học kỳ:"));
-        cbHocKy = new JComboBox<>();
-        try (Connection conn = DBConnect.getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT MaHK, TenHK FROM HOC_KY ORDER BY NamHoc DESC, MaHK DESC");
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                cbHocKy.addItem(rs.getString("MaHK") + " - " + rs.getString("TenHK"));
-            }
-        } catch (Exception e) {
-            cbHocKy.addItem("HK1_2425 - Học kỳ 1 2024-2025"); 
-        }
-        cbHocKy.setFont(UIUtils.FONT_BOLD);
-        cbHocKy.setBackground(UIUtils.WHITE);
-        hkPanel.add(cbHocKy);
-        header.add(hkPanel, BorderLayout.EAST);
+        // Combo Học kỳ chung đã Bỏ ĐI - mỗi luồng (Điểm/Lịch học/Đăng ký) tự quản lý combo Học kỳ riêng của nó, lọc đúng theo SV đang đăng nhập.
 
         // --- 3. CARD LAYOUT (VÙNG HIỂN THỊ CHỨC NĂNG) ---
         cardLayout = new CardLayout();
@@ -189,29 +171,6 @@ public class StudentPanel extends JPanel {
         add(sidebar, BorderLayout.WEST); 
         add(rightPanel, BorderLayout.CENTER);
 
-        // --- 5. SỰ KIỆN ĐỔI HỌC KỲ ---
-        cbHocKy.addActionListener(e -> {
-            String fullHocKy = (String) cbHocKy.getSelectedItem();
-            if (fullHocKy != null) {
-                String maHK = fullHocKy.split("-")[0].trim();
-                
-                // Đồng bộ cập nhật đồng thời cho cả 4 trang
-                if (lichHocPanel != null) {
-                    lichHocPanel.updateData(maHK, fullHocKy); 
-                }
-                if (dashboardPanel != null) {
-                    dashboardPanel.updateData(maHK, fullHocKy); 
-                }
-                if (dangKyPanel != null) {
-                    dangKyPanel.updateData(maHK, fullHocKy); 
-                }
-                if (diemPanel != null) {
-                    diemPanel.updateData(maHK, fullHocKy); // TRUYỀN TÍN HIỆU CHO BẢNG ĐIỂM
-                }
-            }
-        });
-        
-        if (cbHocKy.getItemCount() > 0) cbHocKy.setSelectedIndex(0);
     }
 
     private void loadHeaderInfo() {

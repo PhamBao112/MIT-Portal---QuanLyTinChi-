@@ -21,8 +21,10 @@ public class LichHocPanel extends JPanel {
 
     private StudentManagerService service;
     private String currentMaSV;
-    private String currentMaHK = "HK1_2425";
-    private String currentTenHK = "Học kỳ 1 2024-2025";
+    private String currentMaHK = "";
+    private String currentTenHK = "";
+    private String lastLoadedHK = null;
+    private JComboBox<String> cbHocKy;
     
     // Quản lý tuần học
     private int currentWeek = 1;
@@ -45,13 +47,34 @@ public class LichHocPanel extends JPanel {
         buildUI();
     }
 
-    // Hàm này được StudentPanel gọi khi người dùng đổi ComboBox Học kỳ
-    public void updateData(String maHK, String tenHK) {
-        this.currentMaHK = maHK;
-        this.currentTenHK = tenHK;
-        this.currentWeek = 1; // Reset về tuần 1 khi đổi học kỳ
-        fetchNgayBatDauHK();
-        buildUI();
+    // Combo Học kỳ riêng của trang này - chỉ liệt kê những học kỳ SV này thực sự có đăng ký
+    private void loadHocKyOptions(JComboBox<String> combo) {
+        combo.removeAllItems();
+        try (Connection conn = DBConnect.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "SELECT DISTINCT h.MaHK, h.TenHK FROM HOC_KY h " +
+                 "JOIN LOP_HOC_PHAN lhp ON lhp.MaHK = h.MaHK " +
+                 "JOIN KET_QUA_DANG_KY kq ON kq.MaLHP = lhp.MaLHP " +
+                 "WHERE kq.MaSV = ? ORDER BY h.NamHoc DESC, h.MaHK DESC")) {
+            ps.setString(1, currentMaSV);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) combo.addItem(rs.getString("MaHK") + " - " + rs.getString("TenHK"));
+        } catch (Exception e) { e.printStackTrace(); }
+
+        if (combo.getItemCount() == 0) {
+            currentMaHK = "";
+            currentTenHK = "Chua co du lieu";
+            return;
+        }
+        String target = null;
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            String item = combo.getItemAt(i);
+            if (item.startsWith(currentMaHK + " ")) { target = item; break; }
+        }
+        if (target == null) target = combo.getItemAt(0);
+        combo.setSelectedItem(target); // set truoc khi gan listener nen khong ban su kien
+        currentMaHK = target.split("-")[0].trim();
+        currentTenHK = target.substring(target.indexOf("-") + 1).trim();
     }
 
     private void fetchNgayBatDauHK() {
@@ -72,6 +95,32 @@ public class LichHocPanel extends JPanel {
 
     private void buildUI() {
         this.removeAll();
+
+        // 0. COMBO HỌC KỲ RIÊNG CỦA TRANG NÀY (chỉ liệt kê học kỳ SV này thực sự có đăng ký)
+        JPanel comboRow = new JPanel(new BorderLayout());
+        comboRow.setBackground(UIUtils.WHITE);
+        comboRow.setBorder(new EmptyBorder(15, 20, 0, 20));
+        JLabel lblPageTitle = new JLabel("Lịch Học Thời Khóa Biểu");
+        lblPageTitle.setFont(UIUtils.FONT_TITLE);
+        comboRow.add(lblPageTitle, BorderLayout.WEST);
+
+        JPanel hkBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        hkBox.setBackground(UIUtils.WHITE);
+        hkBox.add(new JLabel("Học kỳ:"));
+        cbHocKy = new JComboBox<>();
+        loadHocKyOptions(cbHocKy); // populate + resolve currentMaHK/currentTenHK, chưa gắn listener nên không bắn sự kiện
+        if (!java.util.Objects.equals(currentMaHK, lastLoadedHK)) {
+            // Chỉ fetch lại ngày bắt đầu + reset tuần khi THẬT SỰ đổi học kỳ (không fetch lại mỗi lần bấm tuần)
+            fetchNgayBatDauHK();
+            currentWeek = 1;
+            lastLoadedHK = currentMaHK;
+        }
+        cbHocKy.setFont(UIUtils.FONT_BOLD);
+        cbHocKy.setBackground(UIUtils.WHITE);
+        cbHocKy.addActionListener(e -> buildUI());
+        hkBox.add(cbHocKy);
+        comboRow.add(hkBox, BorderLayout.EAST);
+
         // ==========================================
         // 1. HEADER & THANH ĐIỀU HƯỚNG TUẦN ( ĐÃ CẮT MÃ HK )
         // ==========================================
@@ -178,7 +227,13 @@ public class LichHocPanel extends JPanel {
             }
         }
 
-        add(header, BorderLayout.NORTH); 
+        JPanel northWrapper = new JPanel();
+        northWrapper.setLayout(new BoxLayout(northWrapper, BoxLayout.Y_AXIS));
+        northWrapper.setBackground(UIUtils.WHITE);
+        northWrapper.add(comboRow);
+        northWrapper.add(header);
+
+        add(northWrapper, BorderLayout.NORTH); 
         add(gridContainer, BorderLayout.CENTER);
         
         this.revalidate();

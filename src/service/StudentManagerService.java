@@ -8,7 +8,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.File;
 import java.io.FileInputStream;
-import java.sql.ResultSet;
 import java.util.List;
 
 public class StudentManagerService {
@@ -25,16 +24,26 @@ public class StudentManagerService {
         return dao.getAllHocKy();
     }
 
+    // Danh sách học kỳ riêng cho 1 sinh viên (chỉ những kỳ SV đó thực sự có đăng ký)
+    public List<String> getDanhSachHocKyCuaSV(String maSV) {
+        return dao.getHocKyCuaSinhVien(maSV);
+    }
+
+    public String getHocKyGanNhatCuaSV(String maSV) {
+        return dao.getHocKyGanNhatCuaSinhVien(maSV);
+    }
+
     public double[] getChiTietCongNo(String maSV, String maHK) {
         return dao.getThongTinCongNo(maSV, maHK);
     }
 
     // NGHIỆP VỤ MỚI: Lấy danh sách công nợ cho Bảng tổng hợp
-    public ResultSet getDanhSachCongNo(String maSV) {
+    // FIX #3: trả về List thay vì ResultSet - tránh rò rỉ connection
+    public List<Object[]> getDanhSachCongNo(String maSV) {
         return dao.getLichSuCongNo(maSV);
     }
 
-    public ResultSet getBangDiemChiTiet(String maSV, String maHK) {
+    public List<Object[]> getBangDiemChiTiet(String maSV, String maHK) {
         return dao.getChiTietDangKyTrongKy(maSV, maHK);
     }
 
@@ -151,6 +160,9 @@ public class StudentManagerService {
             for (Row row : sheet) {
                 if (row.getRowNum() == 0) continue;
                 try {
+                    // FIX #4: thu tu cot Excel phai la MaSV(0), HoTen(1), GioiTinh(2), NgaySinh(3),
+                    // SDT(4), Email(5), TrangThai(6), MaCTDT(7), MaLop(8).
+                    // Ban cu doc nham cell(9) lam MaLop va bo qua han cell(8) -> du lieu MaLop bi sai/rong.
                     String maSV = formatter.formatCellValue(row.getCell(0));
                     if (maSV.isEmpty()) continue;
                     dao.insertSinhVien(
@@ -158,7 +170,7 @@ public class StudentManagerService {
                         formatter.formatCellValue(row.getCell(2)), formatter.formatCellValue(row.getCell(3)), 
                         formatter.formatCellValue(row.getCell(4)), formatter.formatCellValue(row.getCell(5)), 
                         formatter.formatCellValue(row.getCell(6)), formatter.formatCellValue(row.getCell(7)), 
-                        formatter.formatCellValue(row.getCell(9))
+                        formatter.formatCellValue(row.getCell(8))
                     );
                     countSuccess++;
                 } catch (Exception e) { countFail++; }

@@ -10,7 +10,7 @@ import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.ResultSet;
+import java.util.List;
 
 public class CongNoPanel extends JPanel {
     private StudentManagerService service;
@@ -181,27 +181,26 @@ public class CongNoPanel extends JPanel {
         double tongTienNoToanKhoa = 0;
 
         try {
-            ResultSet rs = service.getDanhSachCongNo(maSV);
-            if (rs != null) {
-                while (rs.next()) {
-                    String maHK = rs.getString("MaHK");
-                    String tenHK = rs.getString("TenHK") != null ? rs.getString("TenHK") : maHK;
-                    double tongPhaiDong = rs.getDouble("TongTienPhaiDong");
-                    double daDong = rs.getDouble("SoTienDaDong");
-                    double conNo = tongPhaiDong - daDong;
-                    String trangThai = rs.getString("TrangThai");
+            // FIX #3: service gio tra ve List<Object[]> thay vi ResultSet song (khong con ro ri connection)
+            List<Object[]> ds = service.getDanhSachCongNo(maSV);
+            for (Object[] row : ds) {
+                String maHK = (String) row[0];
+                String tenHK = row[1] != null ? (String) row[1] : maHK;
+                double tongPhaiDong = (double) row[2];
+                double daDong = (double) row[3];
+                double conNo = tongPhaiDong - daDong;
+                String trangThai = (String) row[4];
 
-                    tongTienNoToanKhoa += conNo;
+                tongTienNoToanKhoa += conNo;
 
-                    tableModel.addRow(new Object[]{
-                        maHK, 
-                        tenHK, 
-                        String.format("%,.0f", tongPhaiDong), 
-                        String.format("%,.0f", daDong), 
-                        String.format("%,.0f", conNo), 
-                        trangThai
-                    });
-                }
+                tableModel.addRow(new Object[]{
+                    maHK, 
+                    tenHK, 
+                    String.format("%,.0f", tongPhaiDong), 
+                    String.format("%,.0f", daDong), 
+                    String.format("%,.0f", conNo), 
+                    trangThai
+                });
             }
             
             if (tongTienNoToanKhoa > 0) {

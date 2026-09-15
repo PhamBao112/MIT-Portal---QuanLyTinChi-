@@ -7,7 +7,7 @@ import java.sql.SQLException;
 public class DBConnect {
     private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=QuanLyTinChi;encrypt=true;trustServerCertificate=true;";
     private static final String USER = "sa";       
-    private static final String PASSWORD = "123456";  
+    private static final String PASSWORD = "123";  
 
     public static Connection getConnection() {
         Connection conn = null;

@@ -21,6 +21,7 @@ public class DangKyPanel extends JPanel {
     
     private String currentMaHK = "";
     private String currentTenHK = "Đang tải dữ liệu...";
+    private JComboBox<String> cbHocKy;
     
     private StudentManagerService service;
     private String currentMaSV;
@@ -49,7 +50,8 @@ public class DangKyPanel extends JPanel {
         setBackground(UIUtils.BG_APP);
         setBorder(new EmptyBorder(10, 0, 0, 0));
 
-        loadHocKyHienTai();
+        cbHocKy = new JComboBox<>();
+        loadHocKyOptions(cbHocKy); // populate + resolve currentMaHK/currentTenHK, chưa gắn listener nên không bắn sự kiện
 
         // ==========================================
         // 0. THANH THÔNG BÁO (BANNER) Ở TRÊN CÙNG (Giữ nguyên)
@@ -80,8 +82,33 @@ public class DangKyPanel extends JPanel {
         lblStatus.setBorder(new EmptyBorder(6, 12, 6, 12));
         lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
+        JPanel hkBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        hkBox.setOpaque(false);
+        JLabel lblHkTag = new JLabel("Học kỳ:");
+        lblHkTag.setForeground(Color.WHITE);
+        hkBox.add(lblHkTag);
+        cbHocKy.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        cbHocKy.addActionListener(e -> {
+            String sel = (String) cbHocKy.getSelectedItem();
+            if (sel != null && sel.contains("-")) {
+                currentMaHK = sel.split("-")[0].trim();
+                currentTenHK = sel.substring(sel.indexOf("-") + 1).trim();
+                lblBannerTitle.setText("Đăng ký học phần - " + currentTenHK);
+                loadAvailableClasses();
+                loadRegisteredClasses();
+                revalidate();
+                repaint();
+            }
+        });
+        hkBox.add(cbHocKy);
+
+        JPanel eastWrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        eastWrap.setOpaque(false);
+        eastWrap.add(hkBox);
+        eastWrap.add(lblStatus);
+
         topInfoPanel.add(leftInfo, BorderLayout.WEST);
-        topInfoPanel.add(lblStatus, BorderLayout.EAST);
+        topInfoPanel.add(eastWrap, BorderLayout.EAST);
 
         // ==========================================
         // 1. GRID CHÍNH (TRÁI: DANH SÁCH MÔN - PHẢI: GIỎ HÀNG)
@@ -251,39 +278,34 @@ public class DangKyPanel extends JPanel {
         loadRegisteredClasses();
     }
 
-    private void loadHocKyHienTai() {
-        try {
-            java.util.List<String> dsHocKy = service.getDanhSachHocKy();
-            if (dsHocKy != null && !dsHocKy.isEmpty()) {
-                String fullHocKy = dsHocKy.get(0);
-                if (fullHocKy.contains("-")) {
-                    this.currentMaHK = fullHocKy.split("-")[0].trim();
-                    this.currentTenHK = fullHocKy.substring(fullHocKy.indexOf("-") + 1).trim(); 
-                } else {
-                    this.currentMaHK = fullHocKy;
-                    this.currentTenHK = fullHocKy;
-                }
-            }
-        } catch (Exception e) {}
-    }
+    // Combo Hoc ky rieng cua trang Dang Ky: gom nhung ky SV da dang ky TRUOC DAY + luon co ky hien tai (moi nhat toan he thong)
+    // de SV moi chua dang ky gi cung thay duoc ky dang mo dang ky, khac voi Diem/Lich chi loc thuan theo KET_QUA_DANG_KY
+    private void loadHocKyOptions(JComboBox<String> combo) {
+        combo.removeAllItems();
+        String sql = "SELECT MaHK, TenHK FROM HOC_KY WHERE " +
+                     "MaHK IN (SELECT DISTINCT lhp.MaHK FROM LOP_HOC_PHAN lhp JOIN KET_QUA_DANG_KY kq ON kq.MaLHP = lhp.MaLHP WHERE kq.MaSV = ?) " +
+                     "OR MaHK = (SELECT TOP 1 MaHK FROM HOC_KY ORDER BY NamHoc DESC, MaHK DESC) " +
+                     "ORDER BY NamHoc DESC, MaHK DESC";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, currentMaSV);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) combo.addItem(rs.getString("MaHK") + " - " + rs.getString("TenHK"));
+        } catch (Exception e) { e.printStackTrace(); }
 
-    public void updateData(String maHK, String fullTenHK) {
-        this.currentMaHK = maHK;
-        if (fullTenHK != null && fullTenHK.contains("-")) {
-            this.currentTenHK = fullTenHK.substring(fullTenHK.indexOf("-") + 1).trim(); 
-        } else {
-            this.currentTenHK = fullTenHK;
+        if (combo.getItemCount() == 0) {
+            currentMaHK = "";
+            currentTenHK = "Chua co du lieu";
+            return;
         }
-        
-        if (lblBannerTitle != null) {
-            lblBannerTitle.setText("Đăng ký học phần - " + currentTenHK);
+        String target = null;
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            String item = combo.getItemAt(i);
+            if (item.startsWith(currentMaHK + " ")) { target = item; break; }
         }
-        
-        loadAvailableClasses();
-        loadRegisteredClasses();
-        
-        revalidate();
-        repaint();
+        if (target == null) target = combo.getItemAt(0);
+        combo.setSelectedItem(target); // set truoc khi gan listener nen khong ban su kien
+        currentMaHK = target.split("-")[0].trim();
+        currentTenHK = target.substring(target.indexOf("-") + 1).trim();
     }
 
     // =========================================================
@@ -303,7 +325,9 @@ public class DangKyPanel extends JPanel {
                      " WHERE kq2.MaSV = ? AND lhp2.MaMon = tq.MaMonTQ AND kq2.TrangThai = N'Đạt') as PassTQ " +
                      "FROM LOP_HOC_PHAN lhp " +
                      "JOIN MON_HOC m ON lhp.MaMon = m.MaMon " +
-                     "JOIN GIANG_VIEN gv ON lhp.MaGV = gv.MaGV " +
+                     // FIX #1: doi thanh LEFT JOIN - lop chua duoc gan GV van phai hien ra cho SV thay,
+                     // truoc day dung INNER JOIN nen lop MaGV = NULL bi am tham bien mat khoi danh sach dang ky
+                     "LEFT JOIN GIANG_VIEN gv ON lhp.MaGV = gv.MaGV " +
                      "LEFT JOIN MON_TIEN_QUYET tq ON m.MaMon = tq.MaMon " +
                      "WHERE lhp.MaHK = ?";
 
@@ -318,6 +342,7 @@ public class DangKyPanel extends JPanel {
                 String tenMon = rs.getString("TenMon");
                 int tc = rs.getInt("SoTinChi");
                 String gv = rs.getString("TenGV");
+                if (gv == null || gv.isBlank()) gv = "Chưa phân công"; // FIX #1: LEFT JOIN co the tra ve NULL
                 String thoiGian = rs.getString("Thu") + " (" + rs.getString("TietHoc") + ") - " + rs.getString("PhongHoc");
                 int sucChua = rs.getInt("SucChua");
                 int siSo = rs.getInt("SiSo");

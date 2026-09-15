@@ -29,21 +29,32 @@ public class DashboardPanel extends JPanel {
         this.currentMaSV = maSV;
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBackground(UIUtils.BG_APP);
+        resolveCurrentHocKy();
         buildUI();
+    }
+
+    private void resolveCurrentHocKy() {
+        try (Connection conn = DBConnect.getConnection()) {
+            if (conn == null) return;
+            String sql = "SELECT TOP 1 h.MaHK, h.TenHK FROM HOC_KY h " +
+                         "JOIN LOP_HOC_PHAN lhp ON lhp.MaHK = h.MaHK " +
+                         "JOIN KET_QUA_DANG_KY kq ON kq.MaLHP = lhp.MaLHP " +
+                         "WHERE kq.MaSV = ? ORDER BY h.NamHoc DESC, h.MaHK DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, currentMaSV);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) {
+                    currentHK = rs.getString("MaHK");
+                    currentHKLabel = rs.getString("TenHK");
+                }
+            }
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
     // ========================================================
     // HÀM MỚI: NHẬN TÍN HIỆU TỪ STUDENT PANEL (KHÔNG CÒN BÁO ĐỎ)
     // ========================================================
-    public void updateData(String maHK, String fullTenHK) {
-        this.currentHK = maHK;
-        if (fullTenHK != null && fullTenHK.contains("-")) {
-            this.currentHKLabel = fullTenHK.substring(fullTenHK.indexOf("-") + 1).trim(); 
-        } else {
-            this.currentHKLabel = fullTenHK;
-        }
-        buildUI();
-    }
+    // (Đã gỡ bỏ updateData() cũ - Trang Chủ tự resolveCurrentHocKy() thay vì nhận từ combo global)
 
     private void buildUI() {
         removeAll();
@@ -88,10 +99,21 @@ public class DashboardPanel extends JPanel {
                     gioiTinh = rs.getString("GioiTinh") != null ? rs.getString("GioiTinh") : "Chưa cập nhật";
                 }
             }
-            String sqlDiem = "SELECT SUM(CAST(m.SoTinChi AS INT)) as TCLuyKe, AVG(CAST(kq.DiemTongKet AS FLOAT)) as DiemTB FROM KET_QUA_DANG_KY kq JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP JOIN MON_HOC m ON lhp.MaMon = m.MaMon WHERE kq.MaSV = ? AND kq.TrangThai = N'Đạt'";
+            // FIX #5: GPA phai tinh theo TRONG SO tin chi thay vi AVG() don gian (moi mon deu co diem duoc tinh,
+            // khong chi rieng mon 'Dat', de phan anh dung ca nhung mon khong dat vao GPA tich luy)
+            String sqlDiem = "SELECT " +
+                             "SUM(CASE WHEN kq.TrangThai = N'Đạt' THEN CAST(m.SoTinChi AS INT) ELSE 0 END) as TCLuyKe, " +
+                             "SUM(CASE WHEN kq.DiemTongKet IS NOT NULL THEN CAST(kq.DiemTongKet AS FLOAT) * CAST(m.SoTinChi AS FLOAT) ELSE 0 END) as TongDiemNhanTC, " +
+                             "SUM(CASE WHEN kq.DiemTongKet IS NOT NULL THEN CAST(m.SoTinChi AS FLOAT) ELSE 0 END) as TongTCCoDiem " +
+                             "FROM KET_QUA_DANG_KY kq JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP JOIN MON_HOC m ON lhp.MaMon = m.MaMon WHERE kq.MaSV = ?";
             try (PreparedStatement ps = conn.prepareStatement(sqlDiem)) {
                 ps.setString(1, currentMaSV); ResultSet rs = ps.executeQuery();
-                if (rs.next()) { tinChiTichLuy = rs.getInt("TCLuyKe"); gpa = (rs.getDouble("DiemTB") / 10.0) * 4.0; }
+                if (rs.next()) {
+                    tinChiTichLuy = rs.getInt("TCLuyKe");
+                    double tongTCCoDiem = rs.getDouble("TongTCCoDiem");
+                    double gpa10 = tongTCCoDiem > 0 ? rs.getDouble("TongDiemNhanTC") / tongTCCoDiem : 0.0;
+                    gpa = (gpa10 / 10.0) * 4.0;
+                }
             }
             // Đã thay CURRENT_HK bằng biến currentHK
             String sqlKyNay = "SELECT SUM(CAST(m.SoTinChi AS INT)) as TCKyNay FROM KET_QUA_DANG_KY kq JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP JOIN MON_HOC m ON lhp.MaMon = m.MaMon WHERE kq.MaSV = ? AND lhp.MaHK = ?";
@@ -290,7 +312,8 @@ public class DashboardPanel extends JPanel {
 
         JPanel gridInfo = new JPanel(new GridLayout(3, 2, 20, 10));
         gridInfo.setBackground(Color.WHITE); gridInfo.setBorder(new MatteBorder(0, 1, 0, 0, UIUtils.BORDER)); 
-        gridInfo.add(createProfileAttr("Ngày sinh:", ngaySinh)); gridInfo.add(createProfileAttr("Khóa học:", "K2024"));
+        String khoaHoc = (maLop != null && maLop.length() >= 5) ? maLop.substring(0, 5) : "N/A";
+        gridInfo.add(createProfileAttr("Ngày sinh:", ngaySinh)); gridInfo.add(createProfileAttr("Khóa học:", khoaHoc));
         gridInfo.add(createProfileAttr("Giới tính:", gioiTinh)); gridInfo.add(createProfileAttr("Bậc đào tạo:", "Đại học"));
         gridInfo.add(createProfileAttr("Lớp học:", maLop)); gridInfo.add(createProfileAttr("Ngành:", maCTDT));
 
