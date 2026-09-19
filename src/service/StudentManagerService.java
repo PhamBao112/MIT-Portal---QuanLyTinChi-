@@ -81,6 +81,26 @@ public class StudentManagerService {
             throw new BusinessLogicException("Bạn chưa đạt môn tiên quyết: " + maMonTQ);
         }
         
+        // FIX: goc re cua loi "dang ky trung 3 lan" tren TKB - insertKetQuaDangKy() truoc day
+        // KHONG kiem tra da dang ky chua ma insert thang, chi can bam nut/double-click 1 lan lo
+        // la co the tao 2-3 dong trung het cho cung 1 lop -> hien lap lai nhieu lan tren lich hoc.
+        if (dao.checkDaDangKyLop(maSV, maLHP)) {
+            throw new BusinessLogicException("Bạn đã đăng ký lớp học phần này rồi!");
+        }
+        
+        // FIX (yêu cầu 3): ràng buộc THẬT ở tầng dữ liệu - 1 buổi (Sáng/Chiều) trong ngày
+        // chỉ được học 1 môn, chặn ngay lúc đăng ký thay vì để lọt vào DB rồi mới ẩn ở UI.
+        String[] thuTiet = dao.getThuVaTietHoc(maLHP);
+        if (thuTiet != null && thuTiet[1] != null && thuTiet[1].contains("-")) {
+            try {
+                int tietBD = Integer.parseInt(thuTiet[1].split("-")[0].trim());
+                if (dao.checkTrungBuoi(maSV, lhp.getMaHK(), thuTiet[0], tietBD)) {
+                    String buoi = tietBD <= 6 ? "Sáng" : "Chiều";
+                    throw new BusinessLogicException("Bạn đã có môn học khác vào buổi " + buoi + " " + thuTiet[0] + " rồi! Mỗi buổi chỉ được đăng ký 1 môn.");
+                }
+            } catch (NumberFormatException ignore) {}
+        }
+        
         dao.insertKetQuaDangKy(maSV, maLHP, "Chưa có điểm");
         
         // Tự động cập nhật lại hóa đơn công nợ khi đăng ký môn mới
@@ -116,7 +136,11 @@ public class StudentManagerService {
             return "Học phí đã được cập nhật về 0 do không còn môn học nào.";
         }
         
-        double donGia = 450000.0;
+        // FIX: don gia tin chi truoc day hardcode SAI 450.000d, trong khi TOAN BO du lieu mau
+        // trong CONG_NO_HOC_PHI (QuanLyTinChi.sql) deu tinh theo 850.000d/TC (vd 8TC=6.800.000d).
+        // Neu de 450.000d, chi can 1 SV dang ky/huy 1 mon la calculateTuition() se tinh lai
+        // hoc phi SAI, ghi de len du lieu dung da co.
+        double donGia = 850000.0;
         double tongTien = tongTinChi * donGia;
         
         dao.insertCongNo(maPhieu, maSV, maHK, tongTien);

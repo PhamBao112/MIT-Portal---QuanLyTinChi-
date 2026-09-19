@@ -145,28 +145,39 @@ public class TotNghiepPanel extends JPanel {
                 try { Thread.sleep(600); } catch (Exception ex) {}
 
                 SwingUtilities.invokeLater(() -> {
+                    // FIX: truoc day dung bien allOk tinh 1 lan luc khoi tao panel, trong khi rawResult
+                    // lay tu DB ngay luc bam nut -> neu SV vua thanh toan hoc phi o tab Cong No roi
+                    // quay sang day, tieu de van bao "CHUA DU DIEU KIEN" du chi tiet ben duoi noi da du.
+                    // Gio lay ket luan TRUC TIEP tu ket qua service vua tra ve.
+                    boolean resultOk = rawResult.contains("KẾT LUẬN: ĐỦ ĐIỀU KIỆN");
+                    Color rcBg  = resultOk ? new Color(240,253,244) : new Color(254,242,242);
+                    Color rcBdr = resultOk ? new Color(134,239,172) : new Color(252,165,165);
+                    resultPanel.setBackground(rcBg);
+                    resultPanel.setBorder(BorderFactory.createCompoundBorder(
+                        new LineBorder(rcBdr, 1, true), new EmptyBorder(18, 22, 18, 22)));
+
                     JPanel rc = new JPanel();
                     rc.setLayout(new BoxLayout(rc, BoxLayout.Y_AXIS));
-                    rc.setBackground(rBg);
+                    rc.setBackground(rcBg);
 
                     // Tieu de ket qua
                     JLabel lblRT = new JLabel(
-                        (allOk ? "[OK]  ĐỦ ĐIỀU KIỆN TỐT NGHIỆP"
-                               : "[XX]  CHƯA ĐỦ ĐIỀU KIỆN TỐT NGHIỆP"));
+                        (resultOk ? "[OK]  ĐỦ ĐIỀU KIỆN TỐT NGHIỆP"
+                                  : "[XX]  CHƯA ĐỦ ĐIỀU KIỆN TỐT NGHIỆP"));
                     lblRT.setFont(new Font("Segoe UI", Font.BOLD, 15));
-                    lblRT.setForeground(allOk ? new Color(22,101,52) : new Color(185,28,28));
+                    lblRT.setForeground(resultOk ? new Color(22,101,52) : new Color(185,28,28));
                     lblRT.setAlignmentX(Component.LEFT_ALIGNMENT);
 
                     JSeparator sep2 = new JSeparator();
                     sep2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-                    sep2.setForeground(rBdr);
+                    sep2.setForeground(rcBdr);
                     sep2.setAlignmentX(Component.LEFT_ALIGNMENT);
 
                     // Chi tiet ket qua dang text (tu service tra ve)
                     JTextArea txtDetail = new JTextArea(rawResult);
                     txtDetail.setFont(new Font("Consolas", Font.PLAIN, 14));
                     txtDetail.setEditable(false);
-                    txtDetail.setBackground(rBg);
+                    txtDetail.setBackground(rcBg);
                     txtDetail.setForeground(UIUtils.TEXT_MAIN);
                     txtDetail.setBorder(BorderFactory.createEmptyBorder());
                     txtDetail.setLineWrap(true);
@@ -194,7 +205,10 @@ public class TotNghiepPanel extends JPanel {
                     resultPanel.revalidate();
                     resultPanel.repaint();
 
-                    btnXet.setText(allOk
+                    // FIX: cho phep bam xet lai nhieu lan (truoc day nut bi khoa vinh vien sau 1 lan bam,
+                    // SV thanh toan hoc phi xong khong the xet lai ma phai dang xuat vao lai)
+                    btnXet.setEnabled(true);
+                    btnXet.setText(resultOk
                         ? "[OK]  Đã đủ điều kiện - xem kết quả bên dưới"
                         : "[!!]  Chưa đủ - xem chi tiết bên dưới");
                 });
@@ -233,8 +247,13 @@ public class TotNghiepPanel extends JPanel {
                 if (rs.next()) tinChiTichLuy = rs.getInt(1);
             }
 
-            // 3. Lấy Thông tin Nợ học phí
-            String sql3 = "SELECT SUM(CAST(TongTienPhaiDong AS FLOAT) - CAST(SoTienDaDong AS FLOAT)) FROM CONG_NO_HOC_PHI WHERE MaSV = ? AND TrangThai != N'Đã hoàn thành'";
+            // 3. Lay Thong tin No hoc phi
+            // FIX: bo dieu kien loc theo chuoi TrangThai, chi cong nhung phieu thuc su con thieu tien,
+            // de khop voi cach TruongHocDAO.checkNoHocPhi() xet (tranh the xanh "Da hoan tat" nhung
+            // ket luan lai do "Con no hoc phi").
+            String sql3 = "SELECT ISNULL(SUM(CAST(TongTienPhaiDong AS FLOAT) - CAST(SoTienDaDong AS FLOAT)), 0) " +
+                          "FROM CONG_NO_HOC_PHI WHERE MaSV = ? " +
+                          "AND CAST(TongTienPhaiDong AS FLOAT) - CAST(SoTienDaDong AS FLOAT) > 0";
             try (PreparedStatement ps = conn.prepareStatement(sql3)) {
                 ps.setString(1, currentMaSV);
                 ResultSet rs = ps.executeQuery();
@@ -326,9 +345,9 @@ public class TotNghiepPanel extends JPanel {
         // =========================================================
         // ĐÃ SỬA TÊN BIẾN THÀNH CHỮ 'h' CHO KHỚP VỚI FILE CỦA BẠN
         // =========================================================
-        h.setBackground(new Color(239, 246, 255)); // Nền Xanh dương nhạt
+        h.setBackground(UIUtils.MIT_RED_LIGHT);
         h.setBorder(BorderFactory.createCompoundBorder(
-            new MatteBorder(0, 0, 1, 0, new Color(191, 219, 254)), // Viền dưới nổi nhẹ
+            new MatteBorder(0, 0, 1, 0, UIUtils.MIT_RED),
             new EmptyBorder(15, 20, 15, 20)
         ));
 
@@ -338,7 +357,7 @@ public class TotNghiepPanel extends JPanel {
         // =========================================================
         // ĐÃ SỬA TÊN BIẾN THÀNH CHỮ 'l' CHO KHỚP VỚI FILE CỦA BẠN
         // =========================================================
-        l.setForeground(new Color(30, 64, 175)); // Chữ Xanh dương đậm
+        l.setForeground(UIUtils.MIT_RED);
         
         h.add(l, BorderLayout.WEST);
         return h;

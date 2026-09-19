@@ -49,6 +49,55 @@ public class TruongHocDAO {
         return false;
     }
 
+    // FIX: ham moi ho tro checkDaDangKyLop() trong registerCourse() - ngan chan dang ky trung
+    // (goc re cua loi lich hoc hien trung 3 lan 1 lop).
+    public boolean checkDaDangKyLop(String maSV, String maLHP) {
+        String sql = "SELECT COUNT(*) FROM KET_QUA_DANG_KY WHERE MaSV = ? AND MaLHP = ?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maSV); ps.setString(2, maLHP); ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt(1) > 0;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    // FIX (yeu cau 3): lay Thu + TietHoc cua 1 lop hoc phan, phuc vu kiem tra trung buoi
+    // truoc khi cho dang ky (LopHocPhan entity hien khong co field Thu/TietHoc).
+    public String[] getThuVaTietHoc(String maLHP) {
+        String sql = "SELECT Thu, TietHoc FROM LOP_HOC_PHAN WHERE MaLHP = ?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP); ResultSet rs = ps.executeQuery();
+            if (rs.next()) return new String[]{rs.getString("Thu"), rs.getString("TietHoc")};
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
+    // FIX (yeu cau 3): RANG BUOC THAT O TANG DU LIEU - 1 mon phai chiem tron 1 buoi (Sang/Chieu),
+    // khong duoc nhoi 2 mon KHAC NHAU vao chung 1 buoi cung ngay. Truoc day chi co logic UI
+    // (LichHocPanel tu chon mon co tiet som nhat de hien) - kieu vá đó CHỈ ẨN mon con lai khoi
+    // man hinh chu KHONG XOA khoi KET_QUA_DANG_KY, khien tin chi/hoc phi van tinh SAI (dem ca
+    // mon bi an). Gio chan NGAY TU LUC DANG KY, khong cho phat sinh du lieu xung dot nua.
+    public boolean checkTrungBuoi(String maSV, String maHK, String thuMoi, int tietBatDauMoi) {
+        if (thuMoi == null) return false;
+        boolean buoiSangMoi = tietBatDauMoi <= 6;
+        String sql = "SELECT lhp.TietHoc FROM KET_QUA_DANG_KY kq " +
+                     "JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP " +
+                     "WHERE kq.MaSV = ? AND lhp.MaHK = ? AND lhp.Thu = ?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maSV); ps.setString(2, maHK); ps.setString(3, thuMoi);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String tiet = rs.getString("TietHoc");
+                if (tiet == null || !tiet.contains("-")) continue;
+                try {
+                    int bd = Integer.parseInt(tiet.split("-")[0].trim());
+                    boolean buoiSangCu = bd <= 6;
+                    if (buoiSangCu == buoiSangMoi) return true; // da co 1 mon khac trung buoi nay roi
+                } catch (NumberFormatException ignore) {}
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
     public void insertKetQuaDangKy(String maSV, String maLHP, String trangThai) {
         String sql = "INSERT INTO KET_QUA_DANG_KY (MaSV, MaLHP, TrangThai) VALUES (?, ?, ?)";
         try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -234,7 +283,13 @@ public class TruongHocDAO {
     }
 
     public boolean checkNoHocPhi(String maSV) {
-        String sql = "SELECT COUNT(*) FROM CONG_NO_HOC_PHI WHERE MaSV = ? AND TrangThai != N'Đã hoàn thành'";
+        // FIX: truoc day chi dem theo CHUOI TrangThai != N'Da hoan thanh', trong khi TotNghiepPanel
+        // lai xet theo SO TIEN thuc te con no -> mau thuan ngay tren cung 1 man hinh (the hien
+        // "Da hoan tat hoc phi" mau xanh nhung ket luan lai bao "Con no hoc phi" mau do).
+        // Vi du sinh ra mau thuan: calculateTuition() tao phieu 0d voi TrangThai = N'Chua dong'.
+        // Gio thong nhat: chi tinh la no khi SO TIEN con thieu > 0.
+        String sql = "SELECT COUNT(*) FROM CONG_NO_HOC_PHI WHERE MaSV = ? " +
+                     "AND CAST(TongTienPhaiDong AS FLOAT) - CAST(SoTienDaDong AS FLOAT) > 0";
         try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maSV); ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt(1) > 0;

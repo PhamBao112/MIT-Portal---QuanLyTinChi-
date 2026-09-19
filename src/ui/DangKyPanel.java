@@ -18,21 +18,21 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
 public class DangKyPanel extends JPanel {
-    
+
     private String currentMaHK = "";
     private String currentTenHK = "Đang tải dữ liệu...";
     private JComboBox<String> cbHocKy;
-    
+
     private StudentManagerService service;
     private String currentMaSV;
-    
+
     private DefaultTableModel tableModel;
     private JTable table;
-    
+
     private JPanel cartContentPanel;
     private JLabel lblTotalCredits;
-    private JLabel lblCreditInfo; 
-    private JLabel lblBannerTitle; 
+    private JLabel lblCreditInfo;
+    private JLabel lblBannerTitle;
 
     private final Color INDIGO_600 = new Color(79, 70, 229);
     private final Color INDIGO_50 = new Color(238, 242, 255);
@@ -51,21 +51,28 @@ public class DangKyPanel extends JPanel {
         setBorder(new EmptyBorder(10, 0, 0, 0));
 
         cbHocKy = new JComboBox<>();
-        loadHocKyOptions(cbHocKy); // populate + resolve currentMaHK/currentTenHK, chưa gắn listener nên không bắn sự kiện
+        loadHocKyOptions(cbHocKy);
 
         // ==========================================
-        // 0. THANH THÔNG BÁO (BANNER) Ở TRÊN CÙNG (Giữ nguyên)
+        // 0. THANH THÔNG BÁO (BANNER) - đổi nền tối trung tính sang gradient đỏ/cam MIT
         // ==========================================
-        JPanel topInfoPanel = new JPanel(new BorderLayout());
-        topInfoPanel.setBackground(new Color(40, 40, 40));
-        topInfoPanel.setBorder(new EmptyBorder(12, 20, 12, 20));
+        JPanel topInfoPanel = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setPaint(new GradientPaint(0, 0, UIUtils.MIT_RED, getWidth(), 0, UIUtils.MIT_ORANGE));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.dispose();
+            }
+        };
+        topInfoPanel.setBorder(new EmptyBorder(14, 22, 14, 22));
 
         lblBannerTitle = new JLabel("Đăng ký học phần - " + currentTenHK);
         lblBannerTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblBannerTitle.setForeground(Color.WHITE);
 
         lblCreditInfo = new JLabel("TC đã đăng ký: 0/24    Tối thiểu: 14 TC - Tối đa: 24 TC");
-        lblCreditInfo.setForeground(new Color(180,180,180));
+        lblCreditInfo.setForeground(new Color(255, 230, 220));
         lblCreditInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
         JPanel leftInfo = new JPanel();
@@ -77,8 +84,8 @@ public class DangKyPanel extends JPanel {
 
         JLabel lblStatus = new JLabel("Đang mở đăng ký");
         lblStatus.setOpaque(true);
-        lblStatus.setBackground(new Color(255, 243, 205));
-        lblStatus.setForeground(new Color(146, 64, 14));
+        lblStatus.setBackground(UIUtils.MIT_YELLOW);
+        lblStatus.setForeground(new Color(120, 78, 0));
         lblStatus.setBorder(new EmptyBorder(6, 12, 6, 12));
         lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
@@ -117,27 +124,8 @@ public class DangKyPanel extends JPanel {
         gridContainer.setBackground(UIUtils.BG_APP);
         GridBagConstraints gbc = new GridBagConstraints();
 
-        // --- PANEL TRÁI ---
-        JPanel leftPanel = new JPanel(new BorderLayout());
-        leftPanel.setBackground(Color.WHITE);
-        leftPanel.setBorder(new LineBorder(UIUtils.BORDER, 1, true));
-
-        JPanel tableHeader = new JPanel(new BorderLayout());
-        
-        // 👉 1. ĐỔI MÀU NỀN TIÊU ĐỀ BẢNG THÀNH XANH NHẠT
-        tableHeader.setBackground(new Color(239, 246, 255));
-        tableHeader.setBorder(BorderFactory.createCompoundBorder(
-            new MatteBorder(0, 0, 1, 0, new Color(191, 219, 254)), // Viền dưới nổi nhẹ
-            new EmptyBorder(15, 20, 15, 20)
-        ));
-        
-        JLabel lblLeftTitle = new JLabel("Danh sách lớp học phần mở đăng ký");
-        lblLeftTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        
-        // 👉 2. ĐỔI MÀU CHỮ TIÊU ĐỀ THÀNH XANH ĐẬM
-        lblLeftTitle.setForeground(new Color(30, 64, 175));
-        
-        tableHeader.add(lblLeftTitle, BorderLayout.WEST);
+        // --- PANEL TRÁI (card shell dùng chung) ---
+        JPanel leftPanel = UIUtils.createCardShell("Danh sách lớp học phần mở đăng ký", UIUtils.MIT_RED);
 
         String[] columns = {"Mã lớp HP", "Tên môn học", "Số TC", "Giảng viên", "Thứ - Tiết", "Sĩ số", "Hành động"};
         tableModel = new DefaultTableModel(columns, 0) {
@@ -145,30 +133,6 @@ public class DangKyPanel extends JPanel {
         };
         table = new JTable(tableModel);
         UIUtils.styleTable(table);
-
-        // =========================================================
-        // 👉 3. ÉP MÀU HEADER JTABLE THÀNH XANH ĐẬM
-        // =========================================================
-        DefaultTableCellRenderer customHeaderRenderer = new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                label.setBackground(new Color(30, 64, 175)); // Nền Xanh dương đậm
-                label.setForeground(Color.WHITE);            // Chữ Trắng
-                label.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                label.setHorizontalAlignment(SwingConstants.LEFT);
-                label.setBorder(BorderFactory.createCompoundBorder(
-                    new MatteBorder(0, 0, 1, 1, new Color(40, 74, 185)), // Vạch chia cột
-                    new EmptyBorder(10, 15, 10, 15)
-                ));
-                return label;
-            }
-        };
-
-        for (int i = 0; i < table.getColumnCount(); i++) {
-            table.getColumnModel().getColumn(i).setHeaderRenderer(customHeaderRenderer);
-        }
-        // =========================================================
 
         table.setShowGrid(true);
         table.setGridColor(UIUtils.BORDER);
@@ -189,30 +153,11 @@ public class DangKyPanel extends JPanel {
         scrollTable.setBorder(new MatteBorder(1, 0, 0, 0, UIUtils.BORDER));
         scrollTable.getViewport().setBackground(Color.WHITE);
 
-        leftPanel.add(tableHeader, BorderLayout.NORTH);
         leftPanel.add(scrollTable, BorderLayout.CENTER);
-        // --- PANEL PHẢI (GIỎ HÀNG) ---
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(Color.WHITE);
-        rightPanel.setBorder(new LineBorder(UIUtils.BORDER, 1, true));
-        rightPanel.setPreferredSize(new Dimension(320, 0));
 
-        JPanel cartHeader = new JPanel(new BorderLayout());
-        
-        // 👉 1. ĐỔI MÀU NỀN TIÊU ĐỀ GIỎ HÀNG THÀNH XANH NHẠT
-        cartHeader.setBackground(new Color(239, 246, 255));
-        cartHeader.setBorder(BorderFactory.createCompoundBorder(
-            new MatteBorder(0, 0, 1, 0, new Color(191, 219, 254)), // Viền dưới nổi nhẹ
-            new EmptyBorder(15, 20, 15, 20)
-        ));
-        
-        JLabel lblRightTitle = new JLabel("Học phần đã chọn");
-        lblRightTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        
-        // 👉 2. ĐỔI MÀU CHỮ THÀNH XANH ĐẬM
-        lblRightTitle.setForeground(new Color(30, 64, 175));
-        
-        cartHeader.add(lblRightTitle, BorderLayout.WEST);
+        // --- PANEL PHẢI (GIỎ HÀNG - card shell dùng chung) ---
+        JPanel rightPanel = UIUtils.createCardShell("Học phần đã chọn", UIUtils.MIT_ORANGE);
+        rightPanel.setPreferredSize(new Dimension(320, 0));
 
         cartContentPanel = new JPanel();
         cartContentPanel.setLayout(new BoxLayout(cartContentPanel, BoxLayout.Y_AXIS));
@@ -227,10 +172,9 @@ public class DangKyPanel extends JPanel {
         cartFooter.setBorder(new EmptyBorder(15, 20, 15, 20));
         lblTotalCredits = new JLabel("Tổng số tín chỉ: 0 TC");
         lblTotalCredits.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblTotalCredits.setForeground(INDIGO_600);
+        lblTotalCredits.setForeground(UIUtils.MIT_RED);
         cartFooter.add(lblTotalCredits, BorderLayout.WEST);
 
-        rightPanel.add(cartHeader, BorderLayout.NORTH);
         rightPanel.add(scrollCart, BorderLayout.CENTER);
         rightPanel.add(cartFooter, BorderLayout.SOUTH);
 
@@ -245,7 +189,7 @@ public class DangKyPanel extends JPanel {
 
         add(topInfoPanel, BorderLayout.NORTH);
         add(gridContainer, BorderLayout.CENTER);
-        // LẮNG NGHE SỰ KIỆN CLICK VÀ KIỂM TRA MÔN TIÊN QUYẾT
+
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -258,13 +202,12 @@ public class DangKyPanel extends JPanel {
                         if (state.isRegistered) {
                             cancelClass(state.maLHP, state.tenMonDisplay);
                         } else if (!state.isEligible) {
-                            // HIỆN THÔNG BÁO CHẶN NẾU THIẾU MÔN TIÊN QUYẾT
                             String msg = "Bạn không thể đăng ký môn học này vì đã thiếu môn tiên quyết";
                             if (state.maMonTQ != null && !state.maMonTQ.isEmpty()) {
                                 msg += " (" + state.maMonTQ + ")";
                             }
-                            JOptionPane.showMessageDialog(DangKyPanel.this, 
-                                msg + "!", 
+                            JOptionPane.showMessageDialog(DangKyPanel.this,
+                                msg + "!",
                                 "Không thể đăng ký", JOptionPane.WARNING_MESSAGE);
                         } else if (!state.isFull) {
                             registerClass(state.maLHP, state.tenMonDisplay);
@@ -278,8 +221,6 @@ public class DangKyPanel extends JPanel {
         loadRegisteredClasses();
     }
 
-    // Combo Hoc ky rieng cua trang Dang Ky: gom nhung ky SV da dang ky TRUOC DAY + luon co ky hien tai (moi nhat toan he thong)
-    // de SV moi chua dang ky gi cung thay duoc ky dang mo dang ky, khac voi Diem/Lich chi loc thuan theo KET_QUA_DANG_KY
     private void loadHocKyOptions(JComboBox<String> combo) {
         combo.removeAllItems();
         String sql = "SELECT MaHK, TenHK FROM HOC_KY WHERE " +
@@ -294,7 +235,7 @@ public class DangKyPanel extends JPanel {
 
         if (combo.getItemCount() == 0) {
             currentMaHK = "";
-            currentTenHK = "Chua co du lieu";
+            currentTenHK = "Chưa có dữ liệu";
             return;
         }
         String target = null;
@@ -303,14 +244,11 @@ public class DangKyPanel extends JPanel {
             if (item.startsWith(currentMaHK + " ")) { target = item; break; }
         }
         if (target == null) target = combo.getItemAt(0);
-        combo.setSelectedItem(target); // set truoc khi gan listener nen khong ban su kien
+        combo.setSelectedItem(target);
         currentMaHK = target.split("-")[0].trim();
         currentTenHK = target.substring(target.indexOf("-") + 1).trim();
     }
 
-    // =========================================================
-    // TRUY VẤN MÔN HỌC KẾT HỢP KIỂM TRA MÔN TIÊN QUYẾT 
-    // =========================================================
     private void loadAvailableClasses() {
         if (currentMaHK.isEmpty()) return;
         tableModel.setRowCount(0);
@@ -325,31 +263,34 @@ public class DangKyPanel extends JPanel {
                      " WHERE kq2.MaSV = ? AND lhp2.MaMon = tq.MaMonTQ AND kq2.TrangThai = N'Đạt') as PassTQ " +
                      "FROM LOP_HOC_PHAN lhp " +
                      "JOIN MON_HOC m ON lhp.MaMon = m.MaMon " +
-                     // FIX #1: doi thanh LEFT JOIN - lop chua duoc gan GV van phai hien ra cho SV thay,
-                     // truoc day dung INNER JOIN nen lop MaGV = NULL bi am tham bien mat khoi danh sach dang ky
                      "LEFT JOIN GIANG_VIEN gv ON lhp.MaGV = gv.MaGV " +
                      "LEFT JOIN MON_TIEN_QUYET tq ON m.MaMon = tq.MaMon " +
                      "WHERE lhp.MaHK = ?";
 
         try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, currentMaSV); // Param cho DaDangKy
-            ps.setString(2, currentMaSV); // Param cho PassTQ
-            ps.setString(3, currentMaHK); // Param cho MaHK
+            ps.setString(1, currentMaSV);
+            ps.setString(2, currentMaSV);
+            ps.setString(3, currentMaHK);
             ResultSet rs = ps.executeQuery();
-            
+
             while (rs.next()) {
                 String maLHP = rs.getString("MaLHP");
                 String tenMon = rs.getString("TenMon");
                 int tc = rs.getInt("SoTinChi");
                 String gv = rs.getString("TenGV");
-                if (gv == null || gv.isBlank()) gv = "Chưa phân công"; // FIX #1: LEFT JOIN co the tra ve NULL
-                String thoiGian = rs.getString("Thu") + " (" + rs.getString("TietHoc") + ") - " + rs.getString("PhongHoc");
+                if (gv == null || gv.isBlank()) gv = "Chưa phân công";
+                String thu = rs.getString("Thu");
+                String tietHoc = rs.getString("TietHoc");
+                String phongHoc = rs.getString("PhongHoc");
+                String thoiGian = (thu == null || tietHoc == null)
+                    ? "Đang chờ xếp lịch"
+                    : thu + " (" + tietHoc + ") - " + (phongHoc == null ? "?" : phongHoc);
                 int sucChua = rs.getInt("SucChua");
                 int siSo = rs.getInt("SiSo");
-                
+
                 boolean isReg = rs.getInt("DaDangKy") > 0;
                 boolean isFull = siSo >= sucChua;
-                
+
                 String maMonTQ = rs.getString("MaMonTQ");
                 int passTQ = rs.getInt("PassTQ");
                 boolean isEligible = (maMonTQ == null || maMonTQ.trim().isEmpty() || passTQ > 0);
@@ -369,7 +310,7 @@ public class DangKyPanel extends JPanel {
 
     private void loadRegisteredClasses() {
         if (currentMaHK.isEmpty()) return;
-        
+
         cartContentPanel.removeAll();
         int tongTC = 0;
 
@@ -377,11 +318,11 @@ public class DangKyPanel extends JPanel {
                      "FROM KET_QUA_DANG_KY kq " +
                      "JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP " +
                      "JOIN MON_HOC m ON lhp.MaMon = m.MaMon " +
-                     "WHERE kq.MaSV = ? AND lhp.MaHK = ?"; 
+                     "WHERE kq.MaSV = ? AND lhp.MaHK = ?";
 
         try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, currentMaSV);
-            ps.setString(2, currentMaHK); 
+            ps.setString(2, currentMaHK);
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
@@ -420,7 +361,7 @@ public class DangKyPanel extends JPanel {
         lTitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lTitle.setForeground(UIUtils.TEXT_MAIN);
 
-        JLabel lSub = new JLabel(tc + " TC • " + thu + " (Tiết " + tiet + ")");
+        JLabel lSub = new JLabel(tc + " TC • " + (thu == null || tiet == null ? "Đang chờ xếp lịch" : thu + " (Tiết " + tiet + ")"));
         lSub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lSub.setForeground(UIUtils.TEXT_MUTED);
 
@@ -431,8 +372,8 @@ public class DangKyPanel extends JPanel {
         JLabel btnDelete = new JLabel("HỦY TC");
         btnDelete.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        btnDelete.setForeground(new Color(220, 38, 38)); 
-        btnDelete.setBackground(new Color(254, 226, 226)); 
+        btnDelete.setForeground(new Color(220, 38, 38));
+        btnDelete.setBackground(new Color(254, 226, 226));
         btnDelete.setOpaque(true);
         btnDelete.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(new Color(252, 165, 165), 1, true),
@@ -511,13 +452,12 @@ public class DangKyPanel extends JPanel {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            
+
             ActionState state = (ActionState) table.getValueAt(row, 6);
             if (!isSelected) {
                 if (state != null && state.isRegistered) {
-                    c.setBackground(INDIGO_50); 
+                    c.setBackground(INDIGO_50);
                 } else {
-                    // Đã bỏ màu nền vàng của dòng, trả lại giao diện sọc trắng/xám bình thường
                     c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
                 }
                 c.setForeground(UIUtils.TEXT_MAIN);
@@ -538,7 +478,7 @@ public class DangKyPanel extends JPanel {
         private JLabel btn = new JLabel();
 
         public ActionButtonRenderer() {
-            p.setOpaque(true); 
+            p.setOpaque(true);
             btn.setOpaque(true);
             btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
             btn.setBorder(new EmptyBorder(6, 12, 6, 12));
@@ -552,18 +492,17 @@ public class DangKyPanel extends JPanel {
                 if (state.isRegistered) {
                     p.setBackground(INDIGO_50);
                     btn.setText("Hủy ĐK");
-                    btn.setBackground(RED_100); 
+                    btn.setBackground(RED_100);
                     btn.setForeground(RED_800);
                 } else if (state.isFull) {
                     p.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
                     btn.setText("Đã đầy");
-                    btn.setBackground(RED_100); 
+                    btn.setBackground(RED_100);
                     btn.setForeground(RED_800);
                 } else {
-                    // Dù có đủ điều kiện hay không (Thiếu TQ) thì vẫn hiển thị nút Đăng ký Xanh lá
                     p.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
                     btn.setText("Đăng ký");
-                    btn.setBackground(GREEN_100); 
+                    btn.setBackground(GREEN_100);
                     btn.setForeground(GREEN_800);
                 }
             }

@@ -18,33 +18,26 @@ import config.DBConnect;
 
 /**
  * ============================================================
- *  UIUtils — PHIÊN BẢN NÂNG CẤP GIAO DIỆN (V2)
+ *  AdminUIUtils — GIAO DIỆN ADMIN MỚI
  * ------------------------------------------------------------
- *  - Giữ NGUYÊN toàn bộ tên hằng số màu/font, tên & chữ ký các
- *    hàm public đang được các Panel khác gọi tới
- *    (createPrimaryBtn, createInput, createFormRow, styleTable,
- *    loadHocKyOptionsForStudent...) để KHÔNG phải sửa bất kỳ
- *    file Panel nào khác.
- *  - Hàm loadHocKyOptionsForStudent GIỮ NGUYÊN 100% logic/SQL,
- *    không đụng vào luồng dữ liệu.
- *  - Chỉ nâng cấp phần "vẽ" (Graphics2D) để giao diện đẹp,
- *    hiện đại, bo góc, đổ bóng, hover/focus mượt hơn.
+ *  - Clone từ UIUtils nhưng tùy chỉnh màu sắc và bo góc
+ *    để khớp hoàn toàn với bản thiết kế HTML mit-portal-preview.html
  * ============================================================
  */
-public class UIUtils {
-    // BỘ MÀU CHUẨN CỦA ĐẠI HỌC CÔNG NGHỆ MIỀN ĐÔNG (MIT)
-    public static final Color MIT_RED       = new Color(139, 0, 0);      // Đỏ đô
-    public static final Color MIT_ORANGE    = new Color(230, 81, 0);     // Cam đậm
-    public static final Color MIT_YELLOW    = new Color(255, 193, 7);    // Vàng
-    public static final Color MIT_RED_LIGHT = new Color(253, 240, 240);  // Nền Tab
+public class AdminUIUtils {
+    // BỘ MÀU CHUẨN CỦA ĐẠI HỌC CÔNG NGHỆ MIỀN ĐÔNG (MIT) - Dành riêng cho ADMIN
+    public static final Color MIT_RED       = Color.decode("#7a0c0c");      // Maroon
+    public static final Color MIT_ORANGE    = Color.decode("#e65100");      // Ember
+    public static final Color MIT_YELLOW    = Color.decode("#ffb300");      // Gold
+    public static final Color MIT_RED_LIGHT = Color.decode("#fdf6f0");      // Hover row
 
-    public static final Color BG_APP      = new Color(248, 250, 252);
-    public static final Color BORDER      = new Color(226, 232, 240);
-    public static final Color TEXT_MAIN   = new Color(30, 41, 59);
-    public static final Color TEXT_MUTED  = new Color(100, 116, 139);
-    public static final Color GREEN_500   = new Color(34, 197, 94);
-    public static final Color RED_500     = new Color(239, 68, 68);
-    public static final Color WHITE       = Color.WHITE;
+    public static final Color BG_APP      = Color.decode("#f3f1ee");
+    public static final Color BORDER      = Color.decode("#e7e2da");
+    public static final Color TEXT_MAIN   = Color.decode("#241c1a");
+    public static final Color TEXT_MUTED  = Color.decode("#6b5f58");
+    public static final Color GREEN_500   = Color.decode("#1e8e5a");
+    public static final Color RED_500     = Color.decode("#c62828");
+    public static final Color WHITE       = Color.decode("#ffffff");
 
     public static final Font FONT_NORMAL  = new Font("Segoe UI", Font.PLAIN, 14);
     public static final Font FONT_BOLD    = new Font("Segoe UI", Font.BOLD, 14);
@@ -54,35 +47,31 @@ public class UIUtils {
     public static final Font FONT_EMOJI   = new Font("Segoe UI Emoji", Font.BOLD, 14);
     public static final Font FONT_LOGO    = new Font("Segoe UI Emoji", Font.BOLD, 22);
 
-    // Màu phụ trợ mới (chỉ dùng nội bộ cho hiệu ứng vẽ, không phá vỡ gì)
+    // Màu phụ trợ mới
     private static final Color SHADOW       = new Color(15, 23, 42, 40);
     private static final Color ROW_STRIPE   = new Color(250, 251, 253);
-    private static final Color ROW_HOVER    = new Color(255, 246, 246);
+    private static final Color ROW_HOVER    = Color.decode("#fdf6f0");
 
-    // ================== V3 — SIDEBAR / KPI CARD / BADGE / PROGRESS ==================
-    // Bổ sung cho bản nâng cấp giao diện mới (sidebar nav + dashboard kiểu card).
-    // Không đụng tới bất kỳ hằng số/hàm nào ở trên — các Panel cũ vẫn chạy y nguyên.
-
-    public static final Color SIDEBAR_BG      = new Color(42, 20, 20);   // nâu đỏ đậm (trên)
-    public static final Color SIDEBAR_BG_DARK = new Color(30, 12, 12);   // nâu đỏ đậm hơn (dưới)
+    // ================== SIDEBAR / KPI CARD / BADGE / PROGRESS ==================
+    public static final Color SIDEBAR_BG      = Color.decode("#2a1414");
+    public static final Color SIDEBAR_BG_DARK = Color.decode("#5c0909");
     public static final Color SIDEBAR_ACTIVE  = new Color(255, 255, 255, 30);
     public static final Color SIDEBAR_ACCENT  = MIT_YELLOW;
-    public static final Color SIDEBAR_TEXT       = new Color(232, 217, 210);
-    public static final Color SIDEBAR_TEXT_MUTED = new Color(169, 137, 127);
+    public static final Color SIDEBAR_TEXT       = Color.decode("#e8d9d2");
+    public static final Color SIDEBAR_TEXT_MUTED = Color.decode("#a9897f");
 
-    public static final Color BADGE_OK_BG      = new Color(232, 245, 233);
-    public static final Color BADGE_OK_FG      = new Color(30, 142, 90);
-    public static final Color BADGE_WARN_BG    = new Color(255, 248, 225);
-    public static final Color BADGE_WARN_FG    = new Color(165, 107, 0);
-    public static final Color BADGE_BAD_BG     = new Color(253, 234, 234);
-    public static final Color BADGE_BAD_FG     = new Color(198, 40, 40);
-    public static final Color BADGE_PENDING_BG = new Color(236, 239, 241);
-    public static final Color BADGE_PENDING_FG = new Color(84, 110, 122);
+    public static final Color BADGE_OK_BG      = Color.decode("#e8f5e9");
+    public static final Color BADGE_OK_FG      = Color.decode("#1e8e5a");
+    public static final Color BADGE_WARN_BG    = Color.decode("#fff8e1");
+    public static final Color BADGE_WARN_FG    = Color.decode("#a56b00");
+    public static final Color BADGE_BAD_BG     = Color.decode("#fdeaea");
+    public static final Color BADGE_BAD_FG     = Color.decode("#c62828");
+    public static final Color BADGE_PENDING_BG = Color.decode("#eceff1");
+    public static final Color BADGE_PENDING_FG = Color.decode("#546e7a");
 
     public static final int BADGE_OK = 0, BADGE_WARN = 1, BADGE_BAD = 2, BADGE_PENDING = 3;
 
-    // ================== CARD SHELL DUNG CHUNG (thay cho LineBorder + tableHeader/formHeader
-    // tu che rieng trong tung Panel) - bo goc THAT (14px), tieu de + gach chan mau accent. ==================
+    // ================== CARD SHELL ==================
     public static JPanel createCardShell(String title, Color accent) {
         JPanel card = new JPanel(new BorderLayout()) {
             @Override
@@ -109,19 +98,15 @@ public class UIUtils {
         return card;
     }
 
-    /** Nut xoa/huy (nguy hiem) - dung chung thay vi moi Panel tu che mau do rieng. */
     public static JButton createDangerBtn(String text) {
         return buildFancyButton(text, RED_500, RED_500.darker(), WHITE, true);
     }
 
     // ================== NÚT BẤM CHÍNH (PRIMARY) ==================
-
     public static JButton createPrimaryBtn(String text) {
         return buildFancyButton(text, MIT_RED, MIT_ORANGE, WHITE, true);
     }
 
-    // Bổ sung thêm (KHÔNG thay thế API cũ) — nút phụ dạng viền,
-    // các Panel cũ vẫn hoạt động bình thường vì không gọi tới hàm này.
     public static JButton createSecondaryBtn(String text) {
         return buildFancyButton(text, WHITE, MIT_RED_LIGHT, MIT_RED, false);
     }
@@ -143,10 +128,10 @@ public class UIUtils {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int w = getWidth(), h = getHeight(), arc = 12;
+                int w = getWidth(), h = getHeight();
+                int arc = 9; // Góc bo 9px như thiết kế HTML
                 boolean pressed = getModel().isPressed();
 
-                // Đổ bóng mềm phía dưới nút
                 if (!pressed) {
                     g2.setColor(SHADOW);
                     g2.fill(new RoundRectangle2D.Float(2, 4, w - 4, h - 4, arc, arc));
@@ -190,7 +175,6 @@ public class UIUtils {
     }
 
     // ================== Ô NHẬP LIỆU ==================
-
     public static JTextField createInput() {
         JTextField tf = new RoundedTextField();
         tf.setFont(FONT_NORMAL);
@@ -201,7 +185,6 @@ public class UIUtils {
         return tf;
     }
 
-    /** JTextField tự vẽ nền bo góc + viền đổi màu khi focus (không đổi hành vi nhập liệu). */
     private static class RoundedTextField extends JTextField {
         private boolean focused = false;
 
@@ -217,7 +200,7 @@ public class UIUtils {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(getBackground());
-            g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 10, 10));
+            g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 9, 9)); // Góc bo 9px
             g2.dispose();
             super.paintComponent(g);
         }
@@ -228,7 +211,7 @@ public class UIUtils {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(focused ? MIT_RED : BORDER);
             g2.setStroke(new BasicStroke(focused ? 1.8f : 1.2f));
-            g2.draw(new RoundRectangle2D.Float(0.8f, 0.8f, getWidth() - 2.2f, getHeight() - 2.2f, 10, 10));
+            g2.draw(new RoundRectangle2D.Float(0.8f, 0.8f, getWidth() - 2.2f, getHeight() - 2.2f, 9, 9));
             g2.dispose();
         }
     }
@@ -249,16 +232,8 @@ public class UIUtils {
         return wrapper;
     }
 
-    // DUNG CHUNG cho DiemPanel + LichHocPanel (truoc day 2 file copy y het doan nay).
-    // Chi liet ke nhung hoc ky ma SV nay THUC SU co dang ky (JOIN KET_QUA_DANG_KY).
-    // DangKyPanel KHONG dung ham nay vi no can them ca hoc ky moi nhat chua dang ky.
-    // Tra ve String[]{maHK, tenHK} da duoc resolve + da setSelectedItem tren combo truyen vao.
-    // >>> KHÔNG THAY ĐỔI BẤT KỲ DÒNG LOGIC/SQL NÀO BÊN DƯỚI <<<
     public static String[] loadHocKyOptionsForStudent(JComboBox<String> combo, String maSV, String currentMaHK) {
         combo.removeAllItems();
-        // FIX: SQL Server bat buoc moi cot trong ORDER BY phai co mat trong SELECT DISTINCT.
-        // Truoc day order theo h.NamHoc nhung khong select no -> nem SQLServerException,
-        // combo rong va man hinh bao "Chua co du lieu" du SV co du lieu that.
         try (Connection conn = DBConnect.getConnection();
              PreparedStatement ps = conn.prepareStatement(
                  "SELECT DISTINCT h.MaHK, h.TenHK, h.NamHoc FROM HOC_KY h " +
@@ -279,14 +254,13 @@ public class UIUtils {
             if (item.startsWith(currentMaHK + " ")) { target = item; break; }
         }
         if (target == null) target = combo.getItemAt(0);
-        combo.setSelectedItem(target); // set truoc khi goi noi con lai; nen goi ham nay TRUOC khi gan addActionListener
+        combo.setSelectedItem(target); 
         String maHK = target.split("-")[0].trim();
         String tenHK = target.substring(target.indexOf("-") + 1).trim();
         return new String[]{maHK, tenHK};
     }
 
     // ================== BẢNG DỮ LIỆU (TABLE) ==================
-
     public static void styleTable(JTable table) {
         table.setFont(FONT_NORMAL);
         table.setRowHeight(42);
@@ -297,7 +271,6 @@ public class UIUtils {
         table.setBackground(WHITE);
         table.setFillsViewportHeight(true);
 
-        // Header: bo đậm chữ + viền nhấn đỏ phía dưới cho hiện đại
         JTableHeader th = table.getTableHeader();
         th.setFont(FONT_BOLD);
         th.setForeground(TEXT_MAIN);
@@ -318,7 +291,6 @@ public class UIUtils {
             }
         });
 
-        // Hover theo hàng: lưu chỉ số hàng đang rê chuột trên client property
         table.putClientProperty("hoveredRow", -1);
         table.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -366,8 +338,6 @@ public class UIUtils {
         }
     }
 
-    // ================== HÀM PHỤ TRỢ NỘI BỘ ==================
-
     private static Color lerpColor(Color a, Color b, float t) {
         t = Math.max(0, Math.min(1, t));
         return new Color(
@@ -379,8 +349,6 @@ public class UIUtils {
     private static int clamp(int v) { return Math.max(0, Math.min(255, v)); }
 
     // ================== SIDEBAR NAV ==================
-
-    /** Panel nền sidebar, vẽ gradient đỏ đô đậm (trên → dưới). Dùng BoxLayout dọc, tự add các nav button vào. */
     public static JPanel createSidebarPanel() {
         JPanel p = new JPanel() {
             @Override
@@ -397,7 +365,6 @@ public class UIUtils {
         return p;
     }
 
-    /** Nhãn tiêu đề nhỏ trong sidebar (ví dụ: "QUẢN LÝ"). */
     public static JLabel createSidebarGroupLabel(String text) {
         JLabel l = new JLabel(text.toUpperCase());
         l.setFont(new Font("Segoe UI", Font.BOLD, 10));
@@ -407,10 +374,6 @@ public class UIUtils {
         return l;
     }
 
-    /**
-     * Nút điều hướng trong sidebar. Gọi setSidebarActive(btn, true/false) để chuyển trạng thái
-     * khi người dùng chuyển màn hình (tự vẽ thanh vàng bên trái + nền sáng khi active).
-     */
     public static JButton createSidebarButton(String icon, String text) {
         JButton btn = new JButton() {
             @Override
@@ -429,8 +392,6 @@ public class UIUtils {
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 9, 9);
                 }
 
-                // FIX: icon (emoji) va text PHAI dung 2 Font khac nhau. "Segoe UI" khong co
-                // glyph emoji -> truoc day ve chung 1 font lam icon hien thanh o vuong rong (tofu).
                 Color fg = active ? Color.WHITE : SIDEBAR_TEXT;
                 g2.setColor(fg);
 
@@ -458,15 +419,12 @@ public class UIUtils {
         return btn;
     }
 
-    /** Bật/tắt trạng thái active của 1 nút sidebar (do createSidebarButton tạo ra). */
     public static void setSidebarActive(JButton btn, boolean active) {
         btn.putClientProperty("active", active);
         btn.repaint();
     }
 
     // ================== KPI CARD (DASHBOARD) ==================
-
-    /** Thẻ KPI kiểu dashboard: icon màu + số liệu lớn + nhãn mô tả. */
     public static JPanel createKpiCard(String icon, String value, String label, Color accent) {
         JPanel card = roundedCardPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
@@ -507,7 +465,6 @@ public class UIUtils {
         return card;
     }
 
-    /** Panel trắng bo góc dùng chung cho card/dashboard (nền trắng + viền mỏng, không đổ bóng đậm). */
     public static JPanel roundedCardPanel() {
         JPanel p = new JPanel() {
             @Override
@@ -527,8 +484,6 @@ public class UIUtils {
     }
 
     // ================== BADGE TRẠNG THÁI ==================
-
-    /** Nhãn badge tròn viền màu (BADGE_OK / BADGE_WARN / BADGE_BAD / BADGE_PENDING). */
     public static JLabel createBadge(String text, int type) {
         final Color bg, fg;
         switch (type) {
@@ -543,7 +498,7 @@ public class UIUtils {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(bg);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20); // Đổi thành bo góc 20px
                 g2.dispose();
                 super.paintComponent(g);
             }
@@ -555,9 +510,7 @@ public class UIUtils {
         return lbl;
     }
 
-    // ================== PROGRESS BAR (CÔNG NỢ, TỲ LỆ...) ==================
-
-    /** Thanh tiến độ bo góc, gradient cam→vàng, kèm nhãn + % bên phải. */
+    // ================== PROGRESS BAR ==================
     public static JPanel createProgressRow(String label, int percent) {
         int pct = Math.max(0, Math.min(100, percent));
         JPanel row = new JPanel(new BorderLayout(10, 0));
@@ -576,11 +529,11 @@ public class UIUtils {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 int w = getWidth(), h = getHeight();
                 g2.setColor(BG_APP);
-                g2.fillRoundRect(0, 0, w, h, h, h);
+                g2.fillRoundRect(0, 0, w, h, 5, 5); // Bo góc 5px
                 int fillW = (int) (w * (pct / 100.0));
                 if (fillW > 0) {
                     g2.setPaint(new GradientPaint(0, 0, MIT_ORANGE, fillW, 0, MIT_YELLOW));
-                    g2.fillRoundRect(0, 0, fillW, h, h, h);
+                    g2.fillRoundRect(0, 0, fillW, h, 5, 5); // Bo góc 5px
                 }
                 g2.dispose();
             }
