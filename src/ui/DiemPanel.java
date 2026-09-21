@@ -53,6 +53,7 @@ public class DiemPanel extends JPanel {
         // 0. COMBO HỌC KỲ RIÊNG CỦA TRANG NÀY
         JPanel topBar = new JPanel(new BorderLayout());
         topBar.setBackground(UIUtils.BG_APP);
+        topBar.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel lblPageTitle = new JLabel("Bảng Kết Quả Học Tập");
         lblPageTitle.setFont(UIUtils.FONT_TITLE);
         topBar.add(lblPageTitle, BorderLayout.WEST);
@@ -81,7 +82,8 @@ public class DiemPanel extends JPanel {
         // 2. KPI CARD DÙNG CHUNG (UIUtils.createKpiCard)
         topStatsPanel = new JPanel(new GridLayout(1, 4, 15, 0));
         topStatsPanel.setBackground(UIUtils.BG_APP);
-        topStatsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        topStatsPanel.setMaximumSize(new Dimension(6000, 140));
+        topStatsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         topStatsPanel.add(UIUtils.createKpiCard("📘", tcKyNay + " TC", "Tín chỉ đạt kỳ này", new Color(37, 99, 235)));
         topStatsPanel.add(UIUtils.createKpiCard("🎯", String.format("%.2f", gpa10), "Điểm TB Học kỳ (Hệ 10)", UIUtils.MIT_ORANGE));
@@ -107,7 +109,7 @@ public class DiemPanel extends JPanel {
         }
         table.getColumnModel().getColumn(lastCol).setCellRenderer(new BadgeRenderer());
 
-        int[] colWidths = {40, 85, 230, 55, 85, 85, 90, 80, 95, 65, 75, 90, 90};
+        int[] colWidths = {45, 90, 220, 70, 90, 105, 115, 95, 115, 65, 90, 95, 95};
         for (int i = 0; i < colWidths.length && i < table.getColumnCount(); i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(colWidths[i]);
         }

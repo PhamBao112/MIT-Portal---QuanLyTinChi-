@@ -43,7 +43,7 @@ public class AdminPanel extends JPanel {
         brand.setOpaque(false);
         brand.setBorder(new EmptyBorder(0, 6, 18, 6));
         brand.setAlignmentX(Component.LEFT_ALIGNMENT);
-        brand.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        brand.setMaximumSize(new Dimension(2000, 60));
 
         JLabel brandTitle = new JLabel("MIT PORTAL");
         brandTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
@@ -61,7 +61,8 @@ public class AdminPanel extends JPanel {
 
         JSeparator sep = new JSeparator();
         sep.setForeground(new Color(255, 255, 255, 25));
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        sep.setMaximumSize(new Dimension(6000, 1));
+        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(sep);
         sidebar.add(Box.createVerticalStrut(6));
 
@@ -145,7 +146,8 @@ public class AdminPanel extends JPanel {
         sidebar.add(Box.createVerticalGlue());
         JSeparator sep2 = new JSeparator();
         sep2.setForeground(new Color(255, 255, 255, 25));
-        sep2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        sep2.setMaximumSize(new Dimension(6000, 1));
+        sep2.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(sep2);
         sidebar.add(Box.createVerticalStrut(6));
 

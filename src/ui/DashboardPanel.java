@@ -9,6 +9,8 @@ import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -23,9 +25,17 @@ public class DashboardPanel extends JPanel {
     private int tinChiTichLuy = 0, tinChiKyNay = 0;
     private double gpa = 0.0, tongNo = 0.0;
 
-    public DashboardPanel(String maSV) {
+    // V5 - "Thao tác nhanh" gọi thẳng về đúng hành vi chuyển tab của sidebar (StudentPanel
+    // truyền vào), thay vì chỉ là card trang trí, giúp Dashboard thật sự hữu dụng.
+    private Runnable onDangKy, onXemDiem, onCongNo, onLichHoc;
+
+    public DashboardPanel(String maSV, Runnable onDangKy, Runnable onXemDiem, Runnable onCongNo, Runnable onLichHoc) {
         this.currentMaSV = maSV;
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        this.onDangKy = onDangKy;
+        this.onXemDiem = onXemDiem;
+        this.onCongNo = onCongNo;
+        this.onLichHoc = onLichHoc;
+        setLayout(new BorderLayout(0, 20));
         setBackground(UIUtils.BG_APP);
         resolveCurrentHocKy();
         buildUI();
@@ -65,11 +75,15 @@ public class DashboardPanel extends JPanel {
         removeAll();
         loadDataFromDatabase();
 
-        add(createStudentProfileCard());
-        add(Box.createVerticalStrut(20));
-        add(createStatsGrid());
-        add(Box.createVerticalStrut(20));
-        add(createBottomWrapper());
+        JPanel topSection = new JPanel();
+        topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
+        topSection.setOpaque(false);
+        topSection.add(createStudentProfileCard());
+        topSection.add(Box.createVerticalStrut(20));
+        topSection.add(createStatsGrid());
+
+        add(topSection, BorderLayout.NORTH);
+        add(createBottomWrapper(), BorderLayout.CENTER);
 
         revalidate();
         repaint();
@@ -137,7 +151,8 @@ public class DashboardPanel extends JPanel {
     private JPanel createStatsGrid() {
         JPanel gridStats = new JPanel(new GridLayout(1, 4, 15, 0));
         gridStats.setBackground(UIUtils.BG_APP);
-        gridStats.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+        gridStats.setMaximumSize(new Dimension(6000, 150));
+        gridStats.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         gridStats.add(UIUtils.createKpiCard("⭐", tinChiTichLuy + " / 150", "Tín chỉ tích lũy", UIUtils.MIT_RED));
         gridStats.add(UIUtils.createKpiCard("📈", String.format("%.2f", gpa), "Điểm tích lũy (GPA)", UIUtils.MIT_ORANGE));
@@ -148,15 +163,40 @@ public class DashboardPanel extends JPanel {
     }
 
     // ========================================================
-    // KHU VỰC BÊN DƯỚI (BẢNG & THÔNG BÁO)
+    // KHU VỰC BÊN DƯỚI - V5: chia 2 cột, MỖI CARD CAO THEO ĐÚNG NỘI DUNG
+    // (không ép giãn hết chiều cao trang -> tránh khoảng trắng rỗng phía dưới khi ít dữ liệu).
+    // Cột trái: bảng lịch sử học tập + thẻ "Tiến độ học tập" (progress bar).
+    // Cột phải: nhắc nhở hệ thống + thẻ "Thao tác nhanh" (điều hướng thật, không chỉ trang trí).
     // ========================================================
     private JPanel createBottomWrapper() {
         JPanel bottomWrapper = new JPanel(new BorderLayout(20, 0));
-        bottomWrapper.setBackground(UIUtils.BG_APP);
+        bottomWrapper.setOpaque(false);
         bottomWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // --- BẢNG LỊCH SỬ HỌC TẬP (card shell dùng chung) ---
+        JPanel leftColumn = new JPanel();
+        leftColumn.setLayout(new BoxLayout(leftColumn, BoxLayout.Y_AXIS));
+        leftColumn.setOpaque(false);
+        leftColumn.add(createHistoryTableCard());
+        leftColumn.add(Box.createVerticalStrut(20));
+        leftColumn.add(createProgressCard());
+
+        JPanel rightColumn = new JPanel();
+        rightColumn.setLayout(new BoxLayout(rightColumn, BoxLayout.Y_AXIS));
+        rightColumn.setOpaque(false);
+        rightColumn.setPreferredSize(new Dimension(300, 0));
+        rightColumn.setMaximumSize(new Dimension(300, Integer.MAX_VALUE));
+        rightColumn.add(createAlertCard());
+        rightColumn.add(Box.createVerticalStrut(20));
+        rightColumn.add(createQuickActionsCard());
+
+        bottomWrapper.add(leftColumn, BorderLayout.CENTER);
+        bottomWrapper.add(rightColumn, BorderLayout.EAST);
+        return bottomWrapper;
+    }
+
+    private JPanel createHistoryTableCard() {
         JPanel tablePanel = UIUtils.createCardShell("Lịch sử học tập gần đây (" + currentHKLabel + ")", UIUtils.MIT_RED);
+        tablePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         DefaultTableModel model = new DefaultTableModel(new String[]{"Mã HP", "Tên Môn", "Điểm", "Kết quả"}, 0){
             public boolean isCellEditable(int r, int c) { return false; }
@@ -172,6 +212,7 @@ public class DashboardPanel extends JPanel {
 
         JTable table = new JTable(model);
         UIUtils.styleTable(table);
+        table.setFillsViewportHeight(false); // V5: khong keo dai hang trang -> bang cao dung so hang du lieu thuc te
 
         int lastColumnIndex = table.getColumnCount() - 1;
         ZebraRenderer zebra = new ZebraRenderer();
@@ -182,13 +223,43 @@ public class DashboardPanel extends JPanel {
 
         JScrollPane scrollTable = new JScrollPane(table);
         scrollTable.setBorder(new MatteBorder(1, 0, 0, 0, UIUtils.BORDER));
+        scrollTable.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         scrollTable.getViewport().setBackground(Color.WHITE);
+        // Cao vua du so hang thuc te (toi da 6 hang truoc khi can cuon), khong con khoang trang rong
+        int visibleRows = Math.max(1, Math.min(model.getRowCount(), 6));
+        int neededH = 46 + visibleRows * table.getRowHeight() + 2;
+        scrollTable.setPreferredSize(new Dimension(10, neededH));
 
         tablePanel.add(scrollTable, BorderLayout.CENTER);
+        // V5-fix: gioi han max-height = dung preferred height thuc te, KHONG de Integer.MAX_VALUE
+        // (BoxLayout se coi la "co the gian vo han" va keo day card rong nhu loi cu).
+        tablePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, tablePanel.getPreferredSize().height));
+        return tablePanel;
+    }
 
-        // --- KHUNG NHẮC NHỞ TỪ HỆ THỐNG (card shell dùng chung) ---
+    /** Thẻ "Tiến độ học tập" - tái sử dụng UIUtils.createProgressRow (trước đây có sẵn nhưng chưa nơi nào dùng). */
+    private JPanel createProgressCard() {
+        JPanel card = UIUtils.createCardShell("Tiến độ học tập", UIUtils.GREEN_500);
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setOpaque(false);
+        content.setBorder(new EmptyBorder(16, 20, 12, 20));
+
+        int pctTinChi = (int) Math.round(Math.min(100.0, tinChiTichLuy * 100.0 / 150.0));
+        int pctGpa = (int) Math.round(Math.min(100.0, gpa * 100.0 / 4.0));
+        content.add(UIUtils.createProgressRow("Tín chỉ (/150)", pctTinChi));
+        content.add(UIUtils.createProgressRow("GPA quy đổi (/4.0)", pctGpa));
+
+        card.add(content, BorderLayout.CENTER);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+        return card;
+    }
+
+    private JPanel createAlertCard() {
         JPanel alertPanel = UIUtils.createCardShell("Nhắc nhở từ hệ thống", UIUtils.MIT_ORANGE);
-        alertPanel.setPreferredSize(new Dimension(300, 0));
+        alertPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel alertList = new JPanel();
         alertList.setLayout(new BoxLayout(alertList, BoxLayout.Y_AXIS));
@@ -199,20 +270,84 @@ public class DashboardPanel extends JPanel {
         alertList.add(createAlertItem("Tài chính", noMsg, tongNo > 0));
         alertList.add(Box.createVerticalStrut(12));
         alertList.add(createAlertItem("Học vụ", "Hệ thống mở cổng đăng ký tín chỉ " + currentHKLabel + ".", false));
-        alertList.add(Box.createVerticalGlue());
 
         alertPanel.add(alertList, BorderLayout.CENTER);
+        alertPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, alertPanel.getPreferredSize().height));
+        return alertPanel;
+    }
 
-        bottomWrapper.add(tablePanel, BorderLayout.CENTER);
-        bottomWrapper.add(alertPanel, BorderLayout.EAST);
-        return bottomWrapper;
+    /** Thẻ "Thao tác nhanh" - lối tắt điều hướng thật (gọi lại đúng switchTab của sidebar). */
+    private JPanel createQuickActionsCard() {
+        JPanel card = UIUtils.createCardShell("Thao tác nhanh", UIUtils.MIT_RED);
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setOpaque(false);
+        content.setBorder(new EmptyBorder(8, 12, 12, 12));
+
+        content.add(createQuickActionRow("📝", "Đăng ký học phần", onDangKy));
+        content.add(createQuickActionRow("📖", "Xem bảng điểm", onXemDiem));
+        content.add(createQuickActionRow("📅", "Xem lịch học", onLichHoc));
+        content.add(createQuickActionRow("💳", "Thanh toán học phí", onCongNo));
+
+        card.add(content, BorderLayout.CENTER);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+        return card;
+    }
+
+    private JComponent createQuickActionRow(String icon, String text, Runnable action) {
+        JPanel row = new JPanel(new BorderLayout(10, 0)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                if (Boolean.TRUE.equals(getClientProperty("hover"))) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(UIUtils.BG_APP);
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                    g2.dispose();
+                }
+            }
+        };
+        row.setOpaque(false);
+        row.setBorder(new EmptyBorder(9, 8, 9, 8));
+        row.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        left.setOpaque(false);
+        JLabel iconLbl = new JLabel(icon);
+        iconLbl.setFont(UIUtils.FONT_EMOJI.deriveFont(15f));
+        JLabel textLbl = new JLabel(text);
+        textLbl.setFont(UIUtils.FONT_BOLD);
+        textLbl.setForeground(UIUtils.TEXT_MAIN);
+        left.add(iconLbl);
+        left.add(textLbl);
+
+        JLabel chevron = new JLabel("›");
+        chevron.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        chevron.setForeground(UIUtils.TEXT_MUTED);
+
+        row.add(left, BorderLayout.WEST);
+        row.add(chevron, BorderLayout.EAST);
+
+        row.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { row.putClientProperty("hover", true); row.repaint(); }
+            @Override public void mouseExited(MouseEvent e) { row.putClientProperty("hover", false); row.repaint(); }
+            @Override public void mouseClicked(MouseEvent e) { if (action != null) action.run(); }
+        });
+        return row;
     }
 
     private JPanel createStudentProfileCard() {
         JPanel profileCard = UIUtils.roundedCardPanel();
         profileCard.setLayout(new BorderLayout(25, 0));
-        profileCard.setBorder(new EmptyBorder(20, 25, 20, 25));
-        profileCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+        profileCard.setBorder(new EmptyBorder(22, 25, 22, 25));
+        // FIX GOC: KHONG duoc dat maximumSize=Integer.MAX_VALUE tren component DA CO setBorder
+        // (EmptyBorder) - day la loi kinh dien cua BoxLayout: insets + Integer.MAX_VALUE bi TRAN
+        // SO (integer overflow), khien BoxLayout tinh ra chieu rong rat nho thay vi full-width.
+        // Dung 1 so lon nhung huu han (man hinh thuc te khong bao gio rong toi 6000px).
+        profileCard.setMaximumSize(new Dimension(6000, 150));
         profileCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel leftProfile = new JPanel(new BorderLayout(15, 0));
@@ -224,27 +359,67 @@ public class DashboardPanel extends JPanel {
         JLabel lblName = new JLabel(hoTen); lblName.setFont(new Font("Segoe UI", Font.BOLD, 20)); lblName.setForeground(UIUtils.TEXT_MAIN);
         JLabel lblMSSV = new JLabel("MSSV: " + currentMaSV); lblMSSV.setForeground(UIUtils.TEXT_MUTED);
         JLabel lblStatus = UIUtils.createBadge(trangThaiHocTap, UIUtils.BADGE_OK);
-        namePanel.add(Box.createVerticalStrut(5)); namePanel.add(lblName); namePanel.add(Box.createVerticalStrut(5)); namePanel.add(lblMSSV); namePanel.add(Box.createVerticalStrut(6)); namePanel.add(lblStatus);
+        namePanel.add(Box.createVerticalGlue());
+        namePanel.add(lblName); namePanel.add(Box.createVerticalStrut(5)); namePanel.add(lblMSSV); namePanel.add(Box.createVerticalStrut(6)); namePanel.add(lblStatus);
+        namePanel.add(Box.createVerticalGlue());
 
         leftProfile.add(lblAvatar, BorderLayout.WEST); leftProfile.add(namePanel, BorderLayout.CENTER);
 
-        JPanel gridInfo = new JPanel(new GridLayout(3, 2, 20, 10));
-        gridInfo.setOpaque(false); gridInfo.setBorder(new MatteBorder(0, 1, 0, 0, UIUtils.BORDER));
+        JPanel gridInfo = new JPanel(new GridLayout(2, 3, 34, 16));
+        gridInfo.setOpaque(false);
+        gridInfo.setAlignmentX(Component.LEFT_ALIGNMENT);
         String khoaHoc = (maLop != null && maLop.length() >= 5) ? maLop.substring(0, 5) : "N/A";
-        gridInfo.add(createProfileAttr("Ngày sinh:", ngaySinh)); gridInfo.add(createProfileAttr("Khóa học:", khoaHoc));
-        gridInfo.add(createProfileAttr("Giới tính:", gioiTinh)); gridInfo.add(createProfileAttr("Bậc đào tạo:", "Đại học"));
-        gridInfo.add(createProfileAttr("Lớp học:", maLop)); gridInfo.add(createProfileAttr("Ngành:", maCTDT));
+        gridInfo.add(createProfileAttr("📅", "Ngày sinh", ngaySinh));
+        gridInfo.add(createProfileAttr("⚧", "Giới tính", gioiTinh));
+        gridInfo.add(createProfileAttr("🎓", "Khóa học", khoaHoc));
+        gridInfo.add(createProfileAttr("🏫", "Lớp học", maLop));
+        gridInfo.add(createProfileAttr("📘", "Bậc đào tạo", "Đại học"));
+        gridInfo.add(createProfileAttr("💻", "Ngành", maCTDT));
+        // V7-fix: gridInfo cao hon can thiet vi rightWrapper (BorderLayout.CENTER) keo full
+        // chieu cao -> boc trong BoxLayout + glue tren/duoi de gridInfo NAM GIUA theo chieu doc,
+        // khop voi avatar/ten ben trai (cung dang can giua bang glue), thay vi dinh len tren.
+        JPanel gridInfoCenterer = new JPanel();
+        gridInfoCenterer.setLayout(new BoxLayout(gridInfoCenterer, BoxLayout.Y_AXIS));
+        gridInfoCenterer.setOpaque(false);
+        gridInfoCenterer.add(Box.createVerticalGlue());
+        gridInfoCenterer.add(gridInfo);
+        gridInfoCenterer.add(Box.createVerticalGlue());
 
-        JPanel rightWrapper = new JPanel(new BorderLayout()); rightWrapper.setOpaque(false); rightWrapper.setBorder(new EmptyBorder(0, 20, 0, 0)); rightWrapper.add(gridInfo, BorderLayout.CENTER);
-        profileCard.add(leftProfile, BorderLayout.WEST); profileCard.add(rightWrapper, BorderLayout.CENTER);
+        JPanel rightWrapper = new JPanel(new BorderLayout());
+        rightWrapper.setOpaque(false);
+        rightWrapper.setBorder(BorderFactory.createCompoundBorder(new MatteBorder(0, 1, 0, 0, UIUtils.BORDER), new EmptyBorder(0, 20, 0, 0)));
+        rightWrapper.add(gridInfoCenterer, BorderLayout.CENTER);
+
+        profileCard.add(leftProfile, BorderLayout.WEST);
+        profileCard.add(rightWrapper, BorderLayout.CENTER);
         return profileCard;
     }
 
-    private JPanel createProfileAttr(String label, String value) {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)); p.setOpaque(false);
-        JLabel l1 = new JLabel(label + "  "); l1.setForeground(UIUtils.TEXT_MUTED);
-        JLabel l2 = new JLabel(value); l2.setFont(new Font("Segoe UI", Font.BOLD, 14)); l2.setForeground(UIUtils.TEXT_MAIN);
-        p.add(l1); p.add(l2); return p;
+    private JPanel createProfileAttr(String icon, String label, String value) {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setOpaque(false);
+
+        JPanel labelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        labelRow.setOpaque(false);
+        labelRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel iconLbl = new JLabel(icon);
+        iconLbl.setFont(UIUtils.FONT_EMOJI.deriveFont(12f));
+        JLabel labelLbl = new JLabel(label.toUpperCase());
+        labelLbl.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        labelLbl.setForeground(UIUtils.TEXT_MUTED);
+        labelRow.add(iconLbl);
+        labelRow.add(labelLbl);
+
+        JLabel valueLbl = new JLabel(value);
+        valueLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        valueLbl.setForeground(UIUtils.TEXT_MAIN);
+        valueLbl.setBorder(new EmptyBorder(3, 0, 0, 0));
+        valueLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        p.add(labelRow);
+        p.add(valueLbl);
+        return p;
     }
 
     /** Avatar tròn gradient cam/vàng thay cho ô vuông cũ - đồng bộ với StudentPanel. */

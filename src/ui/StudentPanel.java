@@ -47,7 +47,7 @@ public class StudentPanel extends JPanel {
         brand.setOpaque(false);
         brand.setBorder(new EmptyBorder(0, 6, 14, 6));
         brand.setAlignmentX(Component.LEFT_ALIGNMENT);
-        brand.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        brand.setMaximumSize(new Dimension(2000, 60));
 
         JLabel brandTitle = new JLabel("MIT PORTAL");
         brandTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
@@ -70,7 +70,7 @@ public class StudentPanel extends JPanel {
         profileCard.setBackground(new Color(255, 255, 255, 18));
         profileCard.setBorder(new EmptyBorder(14, 14, 14, 14));
         profileCard.setAlignmentX(Component.LEFT_ALIGNMENT);
-        profileCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        profileCard.setMaximumSize(new Dimension(2000, 100));
 
         JLabel avatar = new JLabel(new AvatarIcon(hoTen));
         avatar.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -94,7 +94,8 @@ public class StudentPanel extends JPanel {
 
         JSeparator sep = new JSeparator();
         sep.setForeground(new Color(255, 255, 255, 25));
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        sep.setMaximumSize(new Dimension(6000, 1));
+        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(sep);
         sidebar.add(Box.createVerticalStrut(6));
 
@@ -112,25 +113,7 @@ public class StudentPanel extends JPanel {
         lblHeaderTitle.setFont(UIUtils.FONT_TITLE);
         header.add(lblHeaderTitle, BorderLayout.WEST);
 
-        // --- 3. CARD LAYOUT ---
-        cardLayout = new CardLayout();
-        contentArea = new JPanel(cardLayout);
-        contentArea.setBackground(UIUtils.BG_APP);
-        contentArea.setBorder(new EmptyBorder(25, 30, 25, 30));
-
-        dashboardPanel = new DashboardPanel(currentMaSV);
-        lichHocPanel = new LichHocPanel(service, currentMaSV);
-        dangKyPanel = new DangKyPanel(service, currentMaSV);
-        diemPanel = new DiemPanel(currentMaSV);
-
-        contentArea.add(dashboardPanel, "TRANG_CHU");
-        contentArea.add(lichHocPanel, "LICH_HOC");
-        contentArea.add(diemPanel, "DIEM");
-        contentArea.add(dangKyPanel, "DANG_KY");
-        contentArea.add(new CongNoPanel(service, currentMaSV), "CONG_NO");
-        contentArea.add(new TotNghiepPanel(service, currentMaSV), "TOT_NGHIEP");
-
-        // --- 4. SIDEBAR NAV (dùng UIUtils.createSidebarButton) ---
+        // --- 3. TẠO NÚT SIDEBAR TRƯỚC (để có Runnable điều hướng gắn cho Dashboard "Thao tác nhanh") ---
         sidebar.add(UIUtils.createSidebarGroupLabel("Tổng quan"));
         JButton btnHome = createNavBtn("▣", "Trang chủ tổng quan");
         sidebar.add(btnHome);
@@ -149,17 +132,43 @@ public class StudentPanel extends JPanel {
         JButton btnCN = createNavBtn("💳", "Công nợ học phí");
         sidebar.add(btnCN);
 
+        // --- 4. CARD LAYOUT ---
+        cardLayout = new CardLayout();
+        contentArea = new JPanel(cardLayout);
+        contentArea.setBackground(UIUtils.BG_APP);
+        contentArea.setBorder(new EmptyBorder(25, 30, 25, 30));
+
+        // Cac Runnable "Thao tac nhanh" tren Dashboard tai su dung dung switchTab nhu sidebar,
+        // dam bao bam nut tren Dashboard hay tren sidebar deu cho ra cung 1 hanh vi.
+        Runnable goDangKy = () -> switchTab(btnDK, "DANG_KY", "Đăng Ký Học Phần");
+        Runnable goDiem   = () -> switchTab(btnDiem, "DIEM", "Bảng Kết Quả Học Tập");
+        Runnable goCongNo = () -> switchTab(btnCN, "CONG_NO", "Thông Tin Công Nợ Học Phí");
+        Runnable goLichHoc = () -> switchTab(btnLH, "LICH_HOC", "Lịch Học Thời Khóa Biểu");
+
+        dashboardPanel = new DashboardPanel(currentMaSV, goDangKy, goDiem, goCongNo, goLichHoc);
+        lichHocPanel = new LichHocPanel(service, currentMaSV);
+        dangKyPanel = new DangKyPanel(service, currentMaSV);
+        diemPanel = new DiemPanel(currentMaSV);
+
+        contentArea.add(wrapScrollable(dashboardPanel), "TRANG_CHU");
+        contentArea.add(lichHocPanel, "LICH_HOC");
+        contentArea.add(diemPanel, "DIEM");
+        contentArea.add(dangKyPanel, "DANG_KY");
+        contentArea.add(new CongNoPanel(service, currentMaSV), "CONG_NO");
+        contentArea.add(new TotNghiepPanel(service, currentMaSV), "TOT_NGHIEP");
+
         btnHome.addActionListener(e -> switchTab(btnHome, "TRANG_CHU", "Trang Chủ Tổng Quan"));
-        btnLH.addActionListener(e -> switchTab(btnLH, "LICH_HOC", "Lịch Học Thời Khóa Biểu"));
-        btnDiem.addActionListener(e -> switchTab(btnDiem, "DIEM", "Bảng Kết Quả Học Tập"));
-        btnDK.addActionListener(e -> switchTab(btnDK, "DANG_KY", "Đăng Ký Học Phần"));
-        btnCN.addActionListener(e -> switchTab(btnCN, "CONG_NO", "Thông Tin Công Nợ Học Phí"));
+        btnLH.addActionListener(e -> goLichHoc.run());
+        btnDiem.addActionListener(e -> goDiem.run());
+        btnDK.addActionListener(e -> goDangKy.run());
+        btnCN.addActionListener(e -> goCongNo.run());
         btnTN.addActionListener(e -> switchTab(btnTN, "TOT_NGHIEP", "Thẩm Định Xét Tốt Nghiệp"));
 
         sidebar.add(Box.createVerticalGlue());
         JSeparator sep2 = new JSeparator();
         sep2.setForeground(new Color(255, 255, 255, 25));
-        sep2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        sep2.setMaximumSize(new Dimension(6000, 1));
+        sep2.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(sep2);
         sidebar.add(Box.createVerticalStrut(6));
 
@@ -185,6 +194,19 @@ public class StudentPanel extends JPanel {
         JButton btn = UIUtils.createSidebarButton(icon, text);
         sidebarButtons.add(btn);
         return btn;
+    }
+
+    // V6-fix: Trang chu co the vua khit hoac vuot chieu cao man hinh (VD khi them widget
+    // "Thao tac nhanh"), ma contentArea truoc gio khong the cuon -> phan noi dung phia duoi
+    // (2 dong cuoi cua Thao tac nhanh) bi cat mat hoan toan, khong cach nao xem duoc. Boc
+    // trong JScrollPane de luon xem duoc het, du man hinh nho hay lon.
+    private JScrollPane wrapScrollable(JPanel content) {
+        JScrollPane scroll = new JScrollPane(content);
+        scroll.setBorder(null);
+        scroll.getViewport().setBackground(UIUtils.BG_APP);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        return scroll;
     }
 
     private void loadHeaderInfo() {

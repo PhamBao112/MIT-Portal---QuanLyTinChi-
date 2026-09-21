@@ -29,7 +29,7 @@ public class AdminDashboardPanel extends JPanel {
         // --- 1. KHU VỰC THẺ THỐNG KÊ (TOP) ---
         statsRow = new JPanel(new GridLayout(1, 4, 20, 0));
         statsRow.setBackground(UIUtils.BG_APP);
-        statsRow.setPreferredSize(new Dimension(0, 100));
+        statsRow.setPreferredSize(new Dimension(0, 140));
 
         // --- 2. KHU VỰC BẢNG DANH SÁCH (BOTTOM) - card shell dùng chung ---
         JPanel tablePanel = UIUtils.createCardShell("Lớp học phần đang mở (Kỳ này)", UIUtils.MIT_RED);

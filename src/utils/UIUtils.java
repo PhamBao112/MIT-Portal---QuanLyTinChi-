@@ -87,22 +87,16 @@ public class UIUtils {
         JPanel card = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(WHITE);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 14, 14));
-                g2.setColor(BORDER);
-                g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, getWidth() - 2f, getHeight() - 2f, 14, 14));
-                g2.dispose();
+                paintElevatedCard((Graphics2D) g.create(), getWidth(), getHeight(), 14);
             }
         };
         card.setOpaque(false);
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        header.setBorder(BorderFactory.createCompoundBorder(new MatteBorder(0, 0, 2, 0, accent), new EmptyBorder(14, 20, 12, 20)));
+        header.setBorder(BorderFactory.createCompoundBorder(new MatteBorder(0, 0, 2, 0, accent), new EmptyBorder(13, 20, 11, 20)));
         JLabel lbl = new JLabel(title);
-        lbl.setFont(FONT_TITLE);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lbl.setForeground(TEXT_MAIN);
         header.add(lbl, BorderLayout.WEST);
         card.add(header, BorderLayout.NORTH);
@@ -378,6 +372,22 @@ public class UIUtils {
 
     private static int clamp(int v) { return Math.max(0, Math.min(255, v)); }
 
+    // V4 - Do bong mem dung chung cho moi loai "card" (createCardShell, roundedCardPanel,
+    // createKpiCard...) de tao chieu sau (elevation) thay vi chi co vien mong phang nhu truoc,
+    // giup giao dien nhin "day dan" / chuyen nghiep hon ma khong phai sua tung Panel rieng le.
+    private static void paintElevatedCard(Graphics2D g2, int w, int h, int arc) {
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        for (int i = 5; i >= 1; i--) {
+            g2.setColor(new Color(15, 23, 42, 4 + i * 2));
+            g2.fill(new RoundRectangle2D.Float(i * 0.6f, i * 1.3f, w - 2 - i * 0.6f, h - 2 - i * 1.3f, arc, arc));
+        }
+        g2.setColor(WHITE);
+        g2.fill(new RoundRectangle2D.Float(0, 0, w - 3, h - 4, arc, arc));
+        g2.setColor(BORDER);
+        g2.setStroke(new BasicStroke(1f));
+        g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, w - 4f, h - 5f, arc, arc));
+    }
+
     // ================== SIDEBAR NAV ==================
 
     /** Panel nền sidebar, vẽ gradient đỏ đô đậm (trên → dưới). Dùng BoxLayout dọc, tự add các nav button vào. */
@@ -477,23 +487,23 @@ public class UIUtils {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 30));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 32));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 g2.dispose();
                 super.paintComponent(g);
             }
         };
-        iconLbl.setFont(FONT_EMOJI);
+        iconLbl.setFont(FONT_EMOJI.deriveFont(20f));
         iconLbl.setForeground(accent);
         iconLbl.setHorizontalAlignment(SwingConstants.CENTER);
-        iconLbl.setMaximumSize(new Dimension(38, 38));
-        iconLbl.setPreferredSize(new Dimension(38, 38));
+        iconLbl.setMaximumSize(new Dimension(44, 44));
+        iconLbl.setPreferredSize(new Dimension(44, 44));
         iconLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel valLbl = new JLabel(value);
-        valLbl.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        valLbl.setFont(new Font("Segoe UI", Font.BOLD, 25));
         valLbl.setForeground(TEXT_MAIN);
-        valLbl.setBorder(new EmptyBorder(12, 0, 2, 0));
+        valLbl.setBorder(new EmptyBorder(13, 0, 3, 0));
         valLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel lblLbl = new JLabel(label);
@@ -512,14 +522,7 @@ public class UIUtils {
         JPanel p = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(WHITE);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 14, 14));
-                g2.setColor(BORDER);
-                g2.setStroke(new BasicStroke(1f));
-                g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, getWidth() - 2f, getHeight() - 2f, 14, 14));
-                g2.dispose();
+                paintElevatedCard((Graphics2D) g.create(), getWidth(), getHeight(), 14);
             }
         };
         p.setOpaque(false);
