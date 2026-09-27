@@ -154,10 +154,10 @@ public class DashboardPanel extends JPanel {
         gridStats.setMaximumSize(new Dimension(6000, 150));
         gridStats.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        gridStats.add(UIUtils.createKpiCard("⭐", tinChiTichLuy + " / 150", "Tín chỉ tích lũy", UIUtils.MIT_RED));
-        gridStats.add(UIUtils.createKpiCard("📈", String.format("%.2f", gpa), "Điểm tích lũy (GPA)", UIUtils.MIT_ORANGE));
-        gridStats.add(UIUtils.createKpiCard("📖", tinChiKyNay + " TC", "Tín chỉ kỳ này", UIUtils.GREEN_500));
-        gridStats.add(UIUtils.createKpiCard("💳", String.format("%,.0f đ", tongNo), "Công nợ hiện tại", new Color(37, 99, 235)));
+        gridStats.add(UIUtils.createKpiCard("star", tinChiTichLuy + " / 150", "Tín chỉ tích lũy", UIUtils.MIT_RED));
+        gridStats.add(UIUtils.createKpiCard("trend", String.format("%.2f", gpa), "Điểm tích lũy (GPA)", UIUtils.MIT_ORANGE));
+        gridStats.add(UIUtils.createKpiCard("book", tinChiKyNay + " TC", "Tín chỉ kỳ này", UIUtils.GREEN_500));
+        gridStats.add(UIUtils.createKpiCard("card", String.format("%,.0f đ", tongNo), "Công nợ hiện tại", new Color(37, 99, 235)));
 
         return gridStats;
     }
@@ -286,10 +286,10 @@ public class DashboardPanel extends JPanel {
         content.setOpaque(false);
         content.setBorder(new EmptyBorder(8, 12, 12, 12));
 
-        content.add(createQuickActionRow("📝", "Đăng ký học phần", onDangKy));
-        content.add(createQuickActionRow("📖", "Xem bảng điểm", onXemDiem));
-        content.add(createQuickActionRow("📅", "Xem lịch học", onLichHoc));
-        content.add(createQuickActionRow("💳", "Thanh toán học phí", onCongNo));
+        content.add(createQuickActionRow("edit", "Đăng ký học phần", onDangKy));
+        content.add(createQuickActionRow("book", "Xem bảng điểm", onXemDiem));
+        content.add(createQuickActionRow("calendar", "Xem lịch học", onLichHoc));
+        content.add(createQuickActionRow("card", "Thanh toán học phí", onCongNo));
 
         card.add(content, BorderLayout.CENTER);
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
@@ -316,8 +316,7 @@ public class DashboardPanel extends JPanel {
 
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         left.setOpaque(false);
-        JLabel iconLbl = new JLabel(icon);
-        iconLbl.setFont(UIUtils.FONT_EMOJI.deriveFont(15f));
+        JLabel iconLbl = (JLabel) UIUtils.createIconLabel(icon, 16, UIUtils.TEXT_MUTED);
         JLabel textLbl = new JLabel(text);
         textLbl.setFont(UIUtils.FONT_BOLD);
         textLbl.setForeground(UIUtils.TEXT_MAIN);
@@ -339,86 +338,92 @@ public class DashboardPanel extends JPanel {
         return row;
     }
 
+    // V9 - "DOT PHA": banner gradient chao mung + vong tron tien do (thay the card trang
+    // phang lap lai o moi Panel). Chi Panel nay doi, cac Panel khac van dung roundedCardPanel
+    // trang binh thuong (giu su khac biet co chu dich cho khu vuc quan trong nhat cua trang).
     private JPanel createStudentProfileCard() {
-        JPanel profileCard = UIUtils.roundedCardPanel();
-        profileCard.setLayout(new BorderLayout(25, 0));
-        profileCard.setBorder(new EmptyBorder(22, 25, 22, 25));
-        // FIX GOC: KHONG duoc dat maximumSize=Integer.MAX_VALUE tren component DA CO setBorder
-        // (EmptyBorder) - day la loi kinh dien cua BoxLayout: insets + Integer.MAX_VALUE bi TRAN
-        // SO (integer overflow), khien BoxLayout tinh ra chieu rong rat nho thay vi full-width.
-        // Dung 1 so lon nhung huu han (man hinh thuc te khong bao gio rong toi 6000px).
-        profileCard.setMaximumSize(new Dimension(6000, 150));
-        profileCard.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JPanel hero = UIUtils.createHeroBanner();
+        hero.setLayout(new BorderLayout(24, 0));
+        hero.setBorder(new EmptyBorder(24, 32, 24, 30));
+        hero.setMaximumSize(new Dimension(6000, 172));
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel leftProfile = new JPanel(new BorderLayout(15, 0));
-        leftProfile.setOpaque(false);
-        String firstChar = hoTen.length() > 0 && !hoTen.equals("Đang tải...") ? hoTen.substring(0, 1) : "A";
-        JLabel lblAvatar = new JLabel(new CircleAvatarIcon(firstChar));
+        // --- Trai: loi chao theo gio trong ngay + ten + trang thai ---
+        JPanel left = new JPanel();
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        left.setOpaque(false);
 
-        JPanel namePanel = new JPanel(); namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.Y_AXIS)); namePanel.setOpaque(false);
-        JLabel lblName = new JLabel(hoTen); lblName.setFont(new Font("Segoe UI", Font.BOLD, 20)); lblName.setForeground(UIUtils.TEXT_MAIN);
-        JLabel lblMSSV = new JLabel("MSSV: " + currentMaSV); lblMSSV.setForeground(UIUtils.TEXT_MUTED);
-        JLabel lblStatus = UIUtils.createBadge(trangThaiHocTap, UIUtils.BADGE_OK);
-        namePanel.add(Box.createVerticalGlue());
-        namePanel.add(lblName); namePanel.add(Box.createVerticalStrut(5)); namePanel.add(lblMSSV); namePanel.add(Box.createVerticalStrut(6)); namePanel.add(lblStatus);
-        namePanel.add(Box.createVerticalGlue());
+        JLabel lblGreeting = new JLabel(UIUtils.greetingByHour() + ", " + hoTen + "!");
+        lblGreeting.setFont(new Font("Segoe UI", Font.BOLD, 23));
+        lblGreeting.setForeground(Color.WHITE);
+        lblGreeting.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        leftProfile.add(lblAvatar, BorderLayout.WEST); leftProfile.add(namePanel, BorderLayout.CENTER);
+        String todayStr;
+        try {
+            todayStr = new java.text.SimpleDateFormat("EEEE, dd/MM/yyyy", new java.util.Locale("vi", "VN")).format(new java.util.Date());
+        } catch (Exception ex) {
+            todayStr = new java.text.SimpleDateFormat("dd/MM/yyyy").format(new java.util.Date());
+        }
+        JLabel lblSub = new JLabel("MSSV " + currentMaSV + "  ·  Lớp " + maLop + "  ·  " + todayStr);
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblSub.setForeground(new Color(255, 255, 255, 215));
+        lblSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblSub.setBorder(new EmptyBorder(6, 0, 14, 0));
 
-        JPanel gridInfo = new JPanel(new GridLayout(2, 3, 34, 16));
-        gridInfo.setOpaque(false);
-        gridInfo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel lblStatus = new JLabel(trangThaiHocTap);
+        lblStatus.setOpaque(true);
+        lblStatus.setBackground(new Color(255, 255, 255, 40));
+        lblStatus.setForeground(Color.WHITE);
+        lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblStatus.setBorder(new EmptyBorder(5, 12, 5, 12));
+        lblStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        left.add(Box.createVerticalGlue());
+        left.add(lblGreeting);
+        left.add(lblSub);
+        left.add(lblStatus);
+        left.add(Box.createVerticalGlue());
+
+        // --- Giua: luoi thong tin nhanh, chu trang tren nen gradient ---
         String khoaHoc = (maLop != null && maLop.length() >= 5) ? maLop.substring(0, 5) : "N/A";
-        gridInfo.add(createProfileAttr("📅", "Ngày sinh", ngaySinh));
-        gridInfo.add(createProfileAttr("⚧", "Giới tính", gioiTinh));
-        gridInfo.add(createProfileAttr("🎓", "Khóa học", khoaHoc));
-        gridInfo.add(createProfileAttr("🏫", "Lớp học", maLop));
-        gridInfo.add(createProfileAttr("📘", "Bậc đào tạo", "Đại học"));
-        gridInfo.add(createProfileAttr("💻", "Ngành", maCTDT));
-        // V7-fix: gridInfo cao hon can thiet vi rightWrapper (BorderLayout.CENTER) keo full
-        // chieu cao -> boc trong BoxLayout + glue tren/duoi de gridInfo NAM GIUA theo chieu doc,
-        // khop voi avatar/ten ben trai (cung dang can giua bang glue), thay vi dinh len tren.
-        JPanel gridInfoCenterer = new JPanel();
-        gridInfoCenterer.setLayout(new BoxLayout(gridInfoCenterer, BoxLayout.Y_AXIS));
-        gridInfoCenterer.setOpaque(false);
-        gridInfoCenterer.add(Box.createVerticalGlue());
-        gridInfoCenterer.add(gridInfo);
-        gridInfoCenterer.add(Box.createVerticalGlue());
+        JPanel infoGrid = new JPanel(new GridLayout(3, 2, 26, 10));
+        infoGrid.setOpaque(false);
+        infoGrid.add(createHeroAttr("calendar", ngaySinh));
+        infoGrid.add(createHeroAttr("users", gioiTinh));
+        infoGrid.add(createHeroAttr("graduation", khoaHoc));
+        infoGrid.add(createHeroAttr("institution", maLop));
+        infoGrid.add(createHeroAttr("book", "Đại học"));
+        infoGrid.add(createHeroAttr("laptop", maCTDT));
 
-        JPanel rightWrapper = new JPanel(new BorderLayout());
-        rightWrapper.setOpaque(false);
-        rightWrapper.setBorder(BorderFactory.createCompoundBorder(new MatteBorder(0, 1, 0, 0, UIUtils.BORDER), new EmptyBorder(0, 20, 0, 0)));
-        rightWrapper.add(gridInfoCenterer, BorderLayout.CENTER);
+        JPanel infoCenterer = new JPanel();
+        infoCenterer.setLayout(new BoxLayout(infoCenterer, BoxLayout.Y_AXIS));
+        infoCenterer.setOpaque(false);
+        infoCenterer.add(Box.createVerticalGlue());
+        infoCenterer.add(infoGrid);
+        infoCenterer.add(Box.createVerticalGlue());
 
-        profileCard.add(leftProfile, BorderLayout.WEST);
-        profileCard.add(rightWrapper, BorderLayout.CENTER);
-        return profileCard;
+        // --- Phai: vong tron tien do tin chi tich luy (diem nhan chinh, khac biet nhat trang) ---
+        int pctTinChi = (int) Math.round(Math.min(100.0, tinChiTichLuy * 100.0 / 150.0));
+        JComponent ring = UIUtils.createRadialProgress(pctTinChi, pctTinChi + "%", "Tín chỉ",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE);
+        ring.setPreferredSize(new Dimension(112, 112));
+        ring.setOpaque(false);
+
+        hero.add(left, BorderLayout.WEST);
+        hero.add(infoCenterer, BorderLayout.CENTER);
+        hero.add(ring, BorderLayout.EAST);
+        return hero;
     }
 
-    private JPanel createProfileAttr(String icon, String label, String value) {
-        JPanel p = new JPanel();
-        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+    /** Muc thong tin nho, chu trang, dung tren banner gradient (khac voi createProfileAttr chu den tren nen trang). */
+    private JComponent createHeroAttr(String icon, String value) {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         p.setOpaque(false);
-
-        JPanel labelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        labelRow.setOpaque(false);
-        labelRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel iconLbl = new JLabel(icon);
-        iconLbl.setFont(UIUtils.FONT_EMOJI.deriveFont(12f));
-        JLabel labelLbl = new JLabel(label.toUpperCase());
-        labelLbl.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-        labelLbl.setForeground(UIUtils.TEXT_MUTED);
-        labelRow.add(iconLbl);
-        labelRow.add(labelLbl);
-
-        JLabel valueLbl = new JLabel(value);
-        valueLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        valueLbl.setForeground(UIUtils.TEXT_MAIN);
-        valueLbl.setBorder(new EmptyBorder(3, 0, 0, 0));
-        valueLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        p.add(labelRow);
-        p.add(valueLbl);
+        p.add(UIUtils.createIconLabel(icon, 15, new Color(255, 255, 255, 210)));
+        JLabel v = new JLabel(value);
+        v.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        v.setForeground(Color.WHITE);
+        p.add(v);
         return p;
     }
 

@@ -11,6 +11,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.RoundRectangle2D;
+import java.awt.geom.Path2D;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -105,22 +108,31 @@ public class UIUtils {
 
     /** Nut xoa/huy (nguy hiem) - dung chung thay vi moi Panel tu che mau do rieng. */
     public static JButton createDangerBtn(String text) {
-        return buildFancyButton(text, RED_500, RED_500.darker(), WHITE, true);
+        return buildFancyButton(null, text, RED_500, RED_500.darker(), WHITE, true);
+    }
+    public static JButton createDangerBtn(String icon, String text) {
+        return buildFancyButton(icon, text, RED_500, RED_500.darker(), WHITE, true);
     }
 
     // ================== NÚT BẤM CHÍNH (PRIMARY) ==================
 
     public static JButton createPrimaryBtn(String text) {
-        return buildFancyButton(text, MIT_RED, MIT_ORANGE, WHITE, true);
+        return buildFancyButton(null, text, MIT_RED, MIT_ORANGE, WHITE, true);
+    }
+    public static JButton createPrimaryBtn(String icon, String text) {
+        return buildFancyButton(icon, text, MIT_RED, MIT_ORANGE, WHITE, true);
     }
 
     // Bổ sung thêm (KHÔNG thay thế API cũ) — nút phụ dạng viền,
     // các Panel cũ vẫn hoạt động bình thường vì không gọi tới hàm này.
     public static JButton createSecondaryBtn(String text) {
-        return buildFancyButton(text, WHITE, MIT_RED_LIGHT, MIT_RED, false);
+        return buildFancyButton(null, text, WHITE, MIT_RED_LIGHT, MIT_RED, false);
+    }
+    public static JButton createSecondaryBtn(String icon, String text) {
+        return buildFancyButton(icon, text, WHITE, MIT_RED_LIGHT, MIT_RED, false);
     }
 
-    private static JButton buildFancyButton(String text, Color base, Color hover, Color fg, boolean filled) {
+    private static JButton buildFancyButton(String icon, String text, Color base, Color hover, Color fg, boolean filled) {
         JButton btn = new JButton(text) {
             private float hoverT = 0f;
             private final javax.swing.Timer anim = new javax.swing.Timer(15, e -> {
@@ -164,12 +176,20 @@ public class UIUtils {
                     g2.draw(new RoundRectangle2D.Float(0.7f, yOff + 0.7f, w - 3.4f, h - 3.4f - yOff, arc, arc));
                 }
 
-                g2.setColor(fg);
+                // V8: icon vector (tuy chon) dung truoc chu, gom chung 1 khoi va can giua ca cum.
                 g2.setFont(FONT_BOLD);
                 FontMetrics fm = g2.getFontMetrics();
-                int tx = (w - fm.stringWidth(text)) / 2;
+                int iconSize = 15, gap = icon != null ? 8 : 0;
+                int textW = fm.stringWidth(text);
+                int totalW = (icon != null ? iconSize + gap : 0) + textW;
+                int startX = (w - totalW) / 2;
                 int ty = (h - yOff + fm.getAscent()) / 2 - 4 + yOff;
-                g2.drawString(text, tx, ty);
+
+                if (icon != null) {
+                    paintIcon(g2, icon, startX, (h - iconSize) / 2f + yOff, iconSize, fg);
+                }
+                g2.setColor(fg);
+                g2.drawString(text, startX + (icon != null ? iconSize + gap : 0), ty);
                 g2.dispose();
             }
         };
@@ -439,16 +459,12 @@ public class UIUtils {
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 9, 9);
                 }
 
-                // FIX: icon (emoji) va text PHAI dung 2 Font khac nhau. "Segoe UI" khong co
-                // glyph emoji -> truoc day ve chung 1 font lam icon hien thanh o vuong rong (tofu).
+                // V7: doi icon emoji -> icon vector (paintIcon) - dong nhat 1 kieu net cho
+                // toan bo app, khong con phu thuoc font Segoe UI Emoji cua Windows.
                 Color fg = active ? Color.WHITE : SIDEBAR_TEXT;
+                paintIcon(g2, icon, 12, (getHeight() - 16) / 2f, 16, fg);
+
                 g2.setColor(fg);
-
-                g2.setFont(FONT_EMOJI.deriveFont(15f));
-                FontMetrics fmIcon = g2.getFontMetrics();
-                int iconY = (getHeight() + fmIcon.getAscent()) / 2 - 4;
-                g2.drawString(icon, 14, iconY);
-
                 g2.setFont(new Font("Segoe UI", active ? Font.BOLD : Font.PLAIN, 13));
                 FontMetrics fm = g2.getFontMetrics();
                 g2.drawString(text, 42, (getHeight() + fm.getAscent()) / 2 - 3);
@@ -482,20 +498,19 @@ public class UIUtils {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(16, 18, 14, 18));
 
-        JLabel iconLbl = new JLabel(icon) {
+        JLabel iconLbl = new JLabel() {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 32));
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                // V7: icon vector thay emoji, canh giua trong khung 44x44.
+                int iconSize = 22;
+                paintIcon(g2, icon, (getWidth() - iconSize) / 2f, (getHeight() - iconSize) / 2f, iconSize, accent);
                 g2.dispose();
-                super.paintComponent(g);
             }
         };
-        iconLbl.setFont(FONT_EMOJI.deriveFont(20f));
-        iconLbl.setForeground(accent);
-        iconLbl.setHorizontalAlignment(SwingConstants.CENTER);
         iconLbl.setMaximumSize(new Dimension(44, 44));
         iconLbl.setPreferredSize(new Dimension(44, 44));
         iconLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -556,6 +571,319 @@ public class UIUtils {
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lbl.setBorder(new EmptyBorder(4, 12, 4, 12));
         return lbl;
+    }
+
+    // ================== ICON VECTOR (V7 - thay emoji theo khuyen nghi skill UI/UX Pro Max:
+    // "No emojis used as icons", "Consistent Icon Sizing", "Stroke Consistency") ==================
+    // Ve trong khung logic 24x24, dung 1 do day net duy nhat, scale theo size truyen vao ->
+    // moi icon trong app CUNG mot phong cach net ve, khong con lech kieu/mau nhu emoji Unicode.
+    public static void paintIcon(Graphics2D g2in, String key, float x, float y, float size, Color color) {
+        Graphics2D g2 = (Graphics2D) g2in.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.translate(x, y);
+        float s = size / 24f;
+        g2.scale(s, s);
+        g2.setColor(color);
+        g2.setStroke(new BasicStroke(2.1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+        switch (key) {
+            case "dashboard": {
+                g2.draw(new RoundRectangle2D.Float(2, 2, 9, 9, 2, 2));
+                g2.draw(new RoundRectangle2D.Float(13, 2, 9, 9, 2, 2));
+                g2.draw(new RoundRectangle2D.Float(2, 13, 9, 9, 2, 2));
+                g2.draw(new RoundRectangle2D.Float(13, 13, 9, 9, 2, 2));
+                break;
+            }
+            case "users": {
+                g2.draw(new Ellipse2D.Float(8, 3, 8, 8));
+                Path2D.Float body = new Path2D.Float();
+                body.moveTo(3, 21);
+                body.curveTo(3, 14, 21, 14, 21, 21);
+                g2.draw(body);
+                break;
+            }
+            case "book": {
+                g2.draw(new RoundRectangle2D.Float(3, 4, 18, 16, 2, 2));
+                g2.draw(new Line2D.Float(12, 4, 12, 20));
+                g2.draw(new Line2D.Float(6, 9, 10, 9));
+                g2.draw(new Line2D.Float(6, 13, 10, 13));
+                g2.draw(new Line2D.Float(14, 9, 18, 9));
+                g2.draw(new Line2D.Float(14, 13, 18, 13));
+                break;
+            }
+            case "card": {
+                g2.draw(new RoundRectangle2D.Float(2, 5, 20, 14, 3, 3));
+                g2.draw(new Line2D.Float(2, 10, 22, 10));
+                g2.draw(new Line2D.Float(5, 15, 9, 15));
+                break;
+            }
+            case "chart": {
+                g2.draw(new Line2D.Float(3, 21, 21, 21));
+                g2.draw(new Line2D.Float(7, 15, 7, 21));
+                g2.draw(new Line2D.Float(12, 10, 12, 21));
+                g2.draw(new Line2D.Float(17, 5, 17, 21));
+                break;
+            }
+            case "upload": {
+                g2.draw(new Line2D.Float(12, 4, 12, 16));
+                g2.draw(new Line2D.Float(12, 4, 7, 9));
+                g2.draw(new Line2D.Float(12, 4, 17, 9));
+                g2.draw(new Line2D.Float(5, 20, 19, 20));
+                break;
+            }
+            case "logout": {
+                g2.draw(new RoundRectangle2D.Float(4, 4, 10, 16, 2, 2));
+                g2.draw(new Line2D.Float(10, 12, 20, 12));
+                g2.draw(new Line2D.Float(20, 12, 16, 8));
+                g2.draw(new Line2D.Float(20, 12, 16, 16));
+                break;
+            }
+            case "calendar": {
+                g2.draw(new RoundRectangle2D.Float(3, 5, 18, 16, 2, 2));
+                g2.draw(new Line2D.Float(3, 10, 21, 10));
+                g2.draw(new Line2D.Float(8, 2, 8, 6));
+                g2.draw(new Line2D.Float(16, 2, 16, 6));
+                break;
+            }
+            case "edit": {
+                g2.draw(new Line2D.Float(5, 19, 16, 8));
+                Path2D.Float tip = new Path2D.Float();
+                tip.moveTo(16, 8);
+                tip.lineTo(19, 5);
+                tip.lineTo(19, 8);
+                tip.closePath();
+                g2.fill(tip);
+                g2.draw(new Line2D.Float(4, 20, 6, 18));
+                break;
+            }
+            case "graduation": {
+                Path2D.Float cap = new Path2D.Float();
+                cap.moveTo(12, 5);
+                cap.lineTo(21, 10);
+                cap.lineTo(12, 15);
+                cap.lineTo(3, 10);
+                cap.closePath();
+                g2.draw(cap);
+                g2.draw(new Line2D.Float(18, 11, 18, 17));
+                g2.draw(new Ellipse2D.Float(16.7f, 17, 2.6f, 2.6f));
+                break;
+            }
+            case "star": {
+                g2.draw(starPath());
+                break;
+            }
+            case "trend": {
+                Path2D.Float zig = new Path2D.Float();
+                zig.moveTo(3, 18);
+                zig.lineTo(9, 12);
+                zig.lineTo(13, 16);
+                zig.lineTo(21, 6);
+                g2.draw(zig);
+                g2.draw(new Line2D.Float(15, 6, 21, 6));
+                g2.draw(new Line2D.Float(21, 6, 21, 12));
+                break;
+            }
+            case "dollar": {
+                g2.draw(new Ellipse2D.Float(3, 3, 18, 18));
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                FontMetrics fm = g2.getFontMetrics();
+                String t = "$";
+                g2.drawString(t, 12 - fm.stringWidth(t) / 2f, 12 + fm.getAscent() / 2f - 1);
+                break;
+            }
+            case "warning": {
+                Path2D.Float tri = new Path2D.Float();
+                tri.moveTo(12, 3);
+                tri.lineTo(21, 20);
+                tri.lineTo(3, 20);
+                tri.closePath();
+                g2.draw(tri);
+                g2.draw(new Line2D.Float(12, 10, 12, 15));
+                g2.fill(new Ellipse2D.Float(11, 16.5f, 2, 2));
+                break;
+            }
+            case "target": {
+                g2.draw(new Ellipse2D.Float(3, 3, 18, 18));
+                g2.draw(new Ellipse2D.Float(8, 8, 8, 8));
+                g2.fill(new Ellipse2D.Float(11, 11, 2, 2));
+                break;
+            }
+            case "medal": {
+                g2.draw(new Ellipse2D.Float(6, 3, 12, 12));
+                g2.draw(new Line2D.Float(9, 13, 6, 21));
+                g2.draw(new Line2D.Float(15, 13, 18, 21));
+                break;
+            }
+            case "institution": {
+                Path2D.Float roof = new Path2D.Float();
+                roof.moveTo(2, 9);
+                roof.lineTo(12, 3);
+                roof.lineTo(22, 9);
+                g2.draw(roof);
+                g2.draw(new Line2D.Float(3, 20, 21, 20));
+                g2.draw(new Line2D.Float(6, 11, 6, 18));
+                g2.draw(new Line2D.Float(12, 11, 12, 18));
+                g2.draw(new Line2D.Float(18, 11, 18, 18));
+                break;
+            }
+            case "laptop": {
+                g2.draw(new RoundRectangle2D.Float(4, 4, 16, 11, 2, 2));
+                g2.draw(new Line2D.Float(2, 19, 22, 19));
+                break;
+            }
+            case "plus": {
+                g2.draw(new Line2D.Float(12, 4, 12, 20));
+                g2.draw(new Line2D.Float(4, 12, 20, 12));
+                break;
+            }
+            case "trash": {
+                g2.draw(new Line2D.Float(4, 7, 20, 7));
+                g2.draw(new RoundRectangle2D.Float(6, 7, 12, 14, 2, 2));
+                g2.draw(new Line2D.Float(9, 4, 15, 4));
+                g2.draw(new Line2D.Float(10, 11, 10, 17));
+                g2.draw(new Line2D.Float(14, 11, 14, 17));
+                break;
+            }
+            case "refresh": {
+                Path2D.Float arc1 = new Path2D.Float();
+                arc1.append(new java.awt.geom.Arc2D.Float(4, 4, 16, 16, 40, 260, java.awt.geom.Arc2D.OPEN), false);
+                g2.draw(arc1);
+                g2.draw(new Line2D.Float(19, 5, 19, 10));
+                g2.draw(new Line2D.Float(19, 5, 14, 6));
+                break;
+            }
+            case "check": {
+                Path2D.Float ck = new Path2D.Float();
+                ck.moveTo(4, 12);
+                ck.lineTo(10, 18);
+                ck.lineTo(20, 6);
+                g2.draw(ck);
+                break;
+            }
+            case "download": {
+                g2.draw(new Line2D.Float(12, 3, 12, 15));
+                g2.draw(new Line2D.Float(12, 15, 7, 10));
+                g2.draw(new Line2D.Float(12, 15, 17, 10));
+                g2.draw(new Line2D.Float(5, 20, 19, 20));
+                break;
+            }
+            default: {
+                g2.draw(new Ellipse2D.Float(4, 4, 16, 16));
+            }
+        }
+        g2.dispose();
+    }
+
+    private static Path2D.Float starPath() {
+        Path2D.Float p = new Path2D.Float();
+        double cx = 12, cy = 12, rOuter = 10, rInner = 4.2;
+        for (int i = 0; i < 10; i++) {
+            double ang = Math.PI / 2 + i * Math.PI / 5;
+            double r = (i % 2 == 0) ? rOuter : rInner;
+            double px = cx + r * Math.cos(ang);
+            double py = cy - r * Math.sin(ang);
+            if (i == 0) p.moveTo(px, py); else p.lineTo(px, py);
+        }
+        p.closePath();
+        return p;
+    }
+
+    /** Component icon tai su dung (thay JLabel emoji rai rac o cac Panel khac). */
+    public static JComponent createIconLabel(String key, int size, Color color) {
+        JLabel lbl = new JLabel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                paintIcon((Graphics2D) g.create(), key, 0, 0, size, color);
+            }
+        };
+        lbl.setPreferredSize(new Dimension(size, size));
+        lbl.setOpaque(false);
+        return lbl;
+    }
+
+    /**
+     * V9 - "DOT PHA": Vong tron tien do (radial progress ring) - thay the KPI card phang
+     * thuong thay o moi ung dung Swing. Ve tay bang Graphics2D, khong dung anh/asset ngoai.
+     * @param percent 0-100
+     * @param bigText chu lon giua vong (VD "34%")
+     * @param smallLabel nhan nho duoi chu lon (VD "Tín chỉ")
+     * @param ringColor mau vong tron da hoan thanh
+     * @param trackColor mau ray track (vong nen mo)
+     * @param textColor mau chu giua
+     */
+    public static JComponent createRadialProgress(int percent, String bigText, String smallLabel,
+                                                    Color ringColor, Color trackColor, Color textColor) {
+        int pct = Math.max(0, Math.min(100, percent));
+        JPanel p = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int w = getWidth(), h = getHeight();
+                int d = Math.min(w, h) - 6;
+                float sw = d * 0.115f;
+                float x = (w - d) / 2f + sw / 2f, y = (h - d) / 2f + sw / 2f;
+                float dd = d - sw;
+
+                g2.setStroke(new BasicStroke(sw, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.setColor(trackColor);
+                g2.draw(new java.awt.geom.Ellipse2D.Float(x, y, dd, dd));
+
+                if (pct > 0) {
+                    g2.setColor(ringColor);
+                    double angle = 360.0 * pct / 100.0;
+                    g2.draw(new java.awt.geom.Arc2D.Double(x, y, dd, dd, 90, -angle, java.awt.geom.Arc2D.OPEN));
+                }
+
+                g2.setColor(textColor);
+                g2.setFont(new Font("Segoe UI", Font.BOLD, Math.max(14, d / 4)));
+                FontMetrics fmB = g2.getFontMetrics();
+                int tx = (w - fmB.stringWidth(bigText)) / 2;
+                int ty = h / 2 - 2;
+                g2.drawString(bigText, tx, ty);
+
+                if (smallLabel != null && !smallLabel.isEmpty()) {
+                    g2.setFont(new Font("Segoe UI", Font.PLAIN, Math.max(10, d / 10)));
+                    FontMetrics fmS = g2.getFontMetrics();
+                    int sx = (w - fmS.stringWidth(smallLabel)) / 2;
+                    g2.drawString(smallLabel, sx, ty + fmS.getHeight() - 2);
+                }
+                g2.dispose();
+            }
+        };
+        p.setOpaque(false);
+        return p;
+    }
+
+    /** V9: banner gradient bo goc dung chung cho khu vuc "chao mung" dau trang Dashboard. */
+    public static JPanel createHeroBanner() {
+        JPanel p = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int w = getWidth(), h = getHeight();
+                g2.setPaint(new GradientPaint(0, 0, MIT_RED, w, h, MIT_ORANGE));
+                g2.fill(new RoundRectangle2D.Float(0, 0, w - 1, h - 1, 18, 18));
+                // Vong tron trang tri mo o goc phai cho co chieu sau, khong phang
+                g2.setColor(new Color(255, 255, 255, 18));
+                g2.fillOval(w - 160, -60, 220, 220);
+                g2.setColor(new Color(255, 255, 255, 12));
+                g2.fillOval(w - 90, h - 80, 140, 140);
+                g2.dispose();
+            }
+        };
+        p.setOpaque(false);
+        return p;
+    }
+
+    /** Loi chao theo gio trong ngay (khong dung emoji, dung icon vector "dashboard"-style rieng). */
+    public static String greetingByHour() {
+        int hour = java.time.LocalTime.now().getHour();
+        if (hour < 11) return "Chào buổi sáng";
+        if (hour < 13) return "Chào buổi trưa";
+        if (hour < 18) return "Chào buổi chiều";
+        return "Chào buổi tối";
     }
 
     // ================== PROGRESS BAR (CÔNG NỢ, TỲ LỆ...) ==================

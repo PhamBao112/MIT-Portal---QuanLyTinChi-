@@ -1,6 +1,7 @@
 import service.StudentManagerService;
 import ui.AdminPanel;
 import ui.StudentPanel;
+import ui.GiangVienPanel;
 import config.DBConnect;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
@@ -54,6 +55,8 @@ public class App {
     private static boolean isHoveringBtn = false;
     private static float btnGlow = 0f;
     private static boolean isSinhVien = true;
+    // true = dang o man hinh dang nhap Quan tri vien (mo bang nut nho o goc tren-phai the)
+    private static boolean isAdminMode = false;
     
     // NEW ANIMATION VARIABLES
     private static float togglePos = 0f;
@@ -219,17 +222,46 @@ public class App {
         toggleTrack.setBounds(px, y, pw, 42);
         
         JButton btnSV = mkToggleLabelBtn("Sinh Viên", true);
-        JButton btnCB = mkToggleLabelBtn("Cán Bộ Đào Tạo", false);
+        JButton btnGV = mkToggleLabelBtn("Giảng Viên", false);
         btnSV.setBounds(0, 0, pw / 2, 42);
-        btnCB.setBounds(pw / 2, 0, pw / 2, 42);
+        btnGV.setBounds(pw / 2, 0, pw / 2, 42);
         toggleTrack.add(btnSV);
-        toggleTrack.add(btnCB);
+        toggleTrack.add(btnGV);
         loginCard.add(toggleTrack);
 
         JLabel lblUserLabel = mkLabel("Mã sinh viên", 14, Font.BOLD, DK_TEXT, SwingConstants.LEFT);
         btnSV.addActionListener(e -> { isSinhVien = true;  lblUserLabel.setText("Mã sinh viên"); });
-        btnCB.addActionListener(e -> { isSinhVien = false; lblUserLabel.setText("Mã cán bộ"); });
+        btnGV.addActionListener(e -> { isSinhVien = false; lblUserLabel.setText("Email giảng viên"); });
         y += 58;
+
+        // ── NÚT NHỎ CHUYỂN SANG ĐĂNG NHẬP QUẢN TRỊ VIÊN (góc trên-phải thẻ) ──
+        JButton btnAdminToggle = new JButton() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int w = getWidth(), h = getHeight();
+                g2.setColor(isAdminMode ? DK_GLOW_ORA : DK_TEXT_MUTED);
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawRoundRect(3, 3, w - 6, h - 6, 8, 8);
+                // Icon banh rang don gian: 1 vong tron + 4 rang nho
+                int cx = w / 2, cy = h / 2, r = 4;
+                g2.drawOval(cx - r, cy - r, r * 2, r * 2);
+                g2.drawLine(cx, cy - r - 3, cx, cy - r);
+                g2.drawLine(cx, cy + r, cx, cy + r + 3);
+                g2.drawLine(cx - r - 3, cy, cx - r, cy);
+                g2.drawLine(cx + r, cy, cx + r + 3, cy);
+                g2.dispose();
+            }
+        };
+        btnAdminToggle.setOpaque(false);
+        btnAdminToggle.setContentAreaFilled(false);
+        btnAdminToggle.setBorderPainted(false);
+        btnAdminToggle.setFocusPainted(false);
+        btnAdminToggle.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAdminToggle.setToolTipText("Đăng nhập dành cho Cán Bộ Đào Tạo");
+        btnAdminToggle.setBounds(CARD_W - 100, 24, 32, 32);
+        loginCard.add(btnAdminToggle);
 
         // ── USER INPUT ──
         lblUserLabel.setBounds(px, y, pw, 22); loginCard.add(lblUserLabel);
@@ -238,6 +270,22 @@ public class App {
         JTextField txtUser = mkDarkInput(PH);
         txtUser.setBounds(px, y, pw, 46); loginCard.add(txtUser);
         y += 58;
+
+        // Gan hanh dong cho nut chuyen Admin (dat sau khi co lblUserLabel/toggleTrack/lblTitle/txtUser)
+        btnAdminToggle.addActionListener(e -> {
+            isAdminMode = !isAdminMode;
+            toggleTrack.setVisible(!isAdminMode);
+            if (isAdminMode) {
+                lblTitle.setText("Đăng Nhập Quản Trị");
+                lblUserLabel.setText("Tài khoản quản trị");
+            } else {
+                lblTitle.setText("Chào mừng trở lại");
+                lblUserLabel.setText(isSinhVien ? "Mã sinh viên" : "Email giảng viên");
+            }
+            txtUser.setText(PH);
+            txtUser.setForeground(DK_TEXT_MUTED);
+            btnAdminToggle.repaint();
+        });
 
         // ── PASS INPUT ──
         JLabel lblPass = mkLabel("Mật khẩu", 14, Font.BOLD, DK_TEXT, SwingConstants.LEFT);
@@ -300,7 +348,7 @@ public class App {
         // XỬ LÝ ĐĂNG NHẬP
         // ══════════════════════════════════════════════════
         ActionListener loginAction = e -> {
-            String role = isSinhVien ? "Sinh Viên" : "Cán Bộ Đào Tạo";
+            String role = isAdminMode ? "Cán Bộ Đào Tạo" : (isSinhVien ? "Sinh Viên" : "Giảng Viên");
             String user = txtUser.getText().trim();
             String pass = new String(txtPass.getPassword()).trim();
             if (user.equals(PH)) user = "";
@@ -323,6 +371,10 @@ public class App {
                     String maSV = user.toUpperCase();
                     rootPanel.add(new StudentPanel(service, maSV), "STUDENT_" + maSV);
                     rootLayout.show(rootPanel, "STUDENT_" + maSV);
+                } else if (role.equals("Giảng Viên")) {
+                    String maGV = service.getMaGVByEmail(user);
+                    rootPanel.add(new GiangVienPanel(service, maGV), "GV_" + maGV);
+                    rootLayout.show(rootPanel, "GV_" + maGV);
                 } else {
                     rootPanel.add(new AdminPanel(service), "ADMIN");
                     rootLayout.show(rootPanel, "ADMIN");
@@ -383,6 +435,19 @@ public class App {
     private static boolean authenticateDB(String role, String username, String password) {
         if (role.equals("Cán Bộ Đào Tạo")) {
             return username.equals("admin123") && password.equals("123");
+        }
+        if (role.equals("Giảng Viên")) {
+            // Dang nhap GV bang Email, mat khau hardcode "123" (chua co cot mat khau rieng trong DB)
+            try (Connection conn = DBConnect.getConnection()) {
+                if (conn == null) return false;
+                String sql = "SELECT MaGV FROM GIANG_VIEN WHERE Email = ?";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, username);
+                    ResultSet rs = ps.executeQuery();
+                    if (rs.next() && password.equals("123")) return true;
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+            return false;
         }
         try (Connection conn = DBConnect.getConnection()) {
             if (conn == null) return username.equals(password);

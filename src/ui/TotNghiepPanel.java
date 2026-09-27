@@ -59,9 +59,8 @@ public class TotNghiepPanel extends JPanel {
         banner.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
         banner.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel icoLbl = new JLabel(allOk ? "[OK]" : "[!!]");
-        icoLbl.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        icoLbl.setForeground(sAcc);
+        // V8: icon vector (check/warning) thay chu "[OK]"/"[!!]" - dong bo voi phan con lai cua app.
+        JLabel icoLbl = (JLabel) UIUtils.createIconLabel(allOk ? "check" : "warning", 22, sAcc);
 
         JPanel bannerTxt = new JPanel();
         bannerTxt.setLayout(new BoxLayout(bannerTxt, BoxLayout.Y_AXIS));
@@ -112,9 +111,9 @@ public class TotNghiepPanel extends JPanel {
         body.add(condRow);
         body.add(Box.createVerticalStrut(25));
 
-        // ─── Nut gui yeu cau ──────────────────────────────────────
-        JButton btnXet = UIUtils.createPrimaryBtn("  GỬI YÊU CẦU XÉT DUYỆT CHÍNH THỨC");
-        btnXet.setMaximumSize(new Dimension(440, 46));
+        // ─── Nut gui yeu cau (V8: co icon vector) ─────────────────
+        JButton btnXet = UIUtils.createPrimaryBtn("check", "Gửi yêu cầu xét duyệt chính thức");
+        btnXet.setMaximumSize(new Dimension(340, 46));
         btnXet.setAlignmentX(Component.LEFT_ALIGNMENT);
         body.add(btnXet);
         body.add(Box.createVerticalStrut(18));
@@ -160,13 +159,16 @@ public class TotNghiepPanel extends JPanel {
                     rc.setLayout(new BoxLayout(rc, BoxLayout.Y_AXIS));
                     rc.setBackground(rcBg);
 
-                    // Tieu de ket qua
-                    JLabel lblRT = new JLabel(
-                        (resultOk ? "[OK]  ĐỦ ĐIỀU KIỆN TỐT NGHIỆP"
-                                  : "[XX]  CHƯA ĐỦ ĐIỀU KIỆN TỐT NGHIỆP"));
+                    // Tieu de ket qua (V8: icon vector thay "[OK]"/"[XX]")
+                    JPanel lblRTRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+                    lblRTRow.setOpaque(false);
+                    lblRTRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    Color rtColor = resultOk ? new Color(22,101,52) : new Color(185,28,28);
+                    lblRTRow.add(UIUtils.createIconLabel(resultOk ? "check" : "warning", 20, rtColor));
+                    JLabel lblRT = new JLabel(resultOk ? "ĐỦ ĐIỀU KIỆN TỐT NGHIỆP" : "CHƯA ĐỦ ĐIỀU KIỆN TỐT NGHIỆP");
                     lblRT.setFont(new Font("Segoe UI", Font.BOLD, 15));
-                    lblRT.setForeground(resultOk ? new Color(22,101,52) : new Color(185,28,28));
-                    lblRT.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    lblRT.setForeground(rtColor);
+                    lblRTRow.add(lblRT);
 
                     JSeparator sep2 = new JSeparator();
                     sep2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
@@ -191,7 +193,7 @@ public class TotNghiepPanel extends JPanel {
                     lblTs.setForeground(UIUtils.TEXT_MUTED);
                     lblTs.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-                    rc.add(lblRT);
+                    rc.add(lblRTRow);
                     rc.add(Box.createVerticalStrut(10));
                     rc.add(sep2);
                     rc.add(Box.createVerticalStrut(10));
@@ -209,8 +211,8 @@ public class TotNghiepPanel extends JPanel {
                     // SV thanh toan hoc phi xong khong the xet lai ma phai dang xuat vao lai)
                     btnXet.setEnabled(true);
                     btnXet.setText(resultOk
-                        ? "[OK]  Đã đủ điều kiện - xem kết quả bên dưới"
-                        : "[!!]  Chưa đủ - xem chi tiết bên dưới");
+                        ? "Đã đủ điều kiện - xem kết quả bên dưới"
+                        : "Chưa đủ - xem chi tiết bên dưới");
                 });
             }).start();
         });
@@ -248,9 +250,6 @@ public class TotNghiepPanel extends JPanel {
             }
 
             // 3. Lay Thong tin No hoc phi
-            // FIX: bo dieu kien loc theo chuoi TrangThai, chi cong nhung phieu thuc su con thieu tien,
-            // de khop voi cach TruongHocDAO.checkNoHocPhi() xet (tranh the xanh "Da hoan tat" nhung
-            // ket luan lai do "Con no hoc phi").
             String sql3 = "SELECT ISNULL(SUM(CAST(TongTienPhaiDong AS FLOAT) - CAST(SoTienDaDong AS FLOAT)), 0) " +
                           "FROM CONG_NO_HOC_PHI WHERE MaSV = ? " +
                           "AND CAST(TongTienPhaiDong AS FLOAT) - CAST(SoTienDaDong AS FLOAT) > 0";
@@ -269,9 +268,6 @@ public class TotNghiepPanel extends JPanel {
 
     // ============================================================
     // HELPER: THE DIEU KIEN TOT NGHIEP
-    // passed = true  → xanh la
-    // passed = false → do
-    // current/max   >= 0 thi ve progress bar (chi cho dieu kien TC)
     // ============================================================
     private JPanel buildCondCard(String title, String requirement,
                                  String statusText, boolean passed,
@@ -285,7 +281,7 @@ public class TotNghiepPanel extends JPanel {
         card.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(bdr, 1, true), new EmptyBorder(16, 18, 16, 18)));
 
-        // Header: ten + icon [OK]/[X]
+        // Header: ten + icon vector check/warning
         JPanel topRow = new JPanel(new BorderLayout(8, 0));
         topRow.setBackground(bg);
 
@@ -293,9 +289,7 @@ public class TotNghiepPanel extends JPanel {
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblTitle.setForeground(UIUtils.TEXT_MAIN);
 
-        JLabel lblIco = new JLabel(passed ? "[OK]" : "[ X]");
-        lblIco.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblIco.setForeground(acc);
+        JLabel lblIco = (JLabel) UIUtils.createIconLabel(passed ? "check" : "warning", 16, acc);
 
         topRow.add(lblTitle, BorderLayout.CENTER);
         topRow.add(lblIco,   BorderLayout.EAST);
@@ -339,12 +333,9 @@ public class TotNghiepPanel extends JPanel {
         card.add(cardBody, BorderLayout.CENTER);
         return card;
     }
+
     private JPanel buildSectionHeader(String title) {
         JPanel h = new JPanel(new BorderLayout());
-        
-        // =========================================================
-        // ĐÃ SỬA TÊN BIẾN THÀNH CHỮ 'h' CHO KHỚP VỚI FILE CỦA BẠN
-        // =========================================================
         h.setBackground(UIUtils.MIT_RED_LIGHT);
         h.setBorder(BorderFactory.createCompoundBorder(
             new MatteBorder(0, 0, 1, 0, UIUtils.MIT_RED),
@@ -353,12 +344,8 @@ public class TotNghiepPanel extends JPanel {
 
         JLabel l = new JLabel(title);
         l.setFont(UIUtils.FONT_TITLE);
-        
-        // =========================================================
-        // ĐÃ SỬA TÊN BIẾN THÀNH CHỮ 'l' CHO KHỚP VỚI FILE CỦA BẠN
-        // =========================================================
         l.setForeground(UIUtils.MIT_RED);
-        
+
         h.add(l, BorderLayout.WEST);
         return h;
     }

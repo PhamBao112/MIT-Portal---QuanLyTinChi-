@@ -33,8 +33,8 @@ public class AdminImportPanel extends JPanel {
         lblSub.setForeground(UIUtils.TEXT_MUTED);
         lblSub.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JButton btnSV = UIUtils.createPrimaryBtn("1. Nạp file Sinh viên");
-        JButton btnGV = UIUtils.createSecondaryBtn("2. Nạp file Giảng viên");
+        JButton btnSV = UIUtils.createPrimaryBtn("upload", "1. Nạp file Sinh viên");
+        JButton btnGV = UIUtils.createSecondaryBtn("upload", "2. Nạp file Giảng viên");
 
         btnSV.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnGV.setAlignmentX(Component.CENTER_ALIGNMENT);

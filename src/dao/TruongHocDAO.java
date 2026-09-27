@@ -4,7 +4,9 @@ import config.DBConnect;
 import entity.LopHocPhan;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TruongHocDAO {
     
@@ -332,5 +334,221 @@ public class TruongHocDAO {
         try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, maGV); ps.setString(2, hoTen); ps.setString(3, gioiTinh); ps.setString(4, hocVi); ps.setString(5, sdt); ps.setString(6, email); ps.setString(7, maKhoa); ps.executeUpdate();
         }
+    }
+
+    // ==========================================================
+    // 5. NGHIỆP VỤ GIẢNG VIÊN (đăng nhập bằng Email + xem lớp + nhập điểm)
+    // ==========================================================
+
+    // Dùng để đăng nhập GV: tìm MaGV tương ứng với Email đã nhập (App.authenticateDB)
+    public String getMaGVByEmail(String email) {
+        String sql = "SELECT MaGV FROM GIANG_VIEN WHERE Email = ?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email); ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getString("MaGV");
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
+    // Thông tin hiển thị ở sidebar/profile card của GiangVienPanel
+    public Object[] getThongTinGV(String maGV) {
+        String sql = "SELECT HoTen, Email, HocVi FROM GIANG_VIEN WHERE MaGV = ?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maGV); ResultSet rs = ps.executeQuery();
+            if (rs.next()) return new Object[]{ rs.getString("HoTen"), rs.getString("Email"), rs.getString("HocVi") };
+        } catch (SQLException e) { e.printStackTrace(); }
+        return new Object[]{ "Giảng viên", "", "" };
+    }
+
+    // Danh sách lớp học phần GV này phụ trách (kèm sĩ số thực tế qua subquery đếm KET_QUA_DANG_KY)
+    public List<Object[]> getLopHocPhanByGV(String maGV) {
+        List<Object[]> ket = new ArrayList<>();
+        String sql = "SELECT lhp.MaLHP, m.TenMon, m.SoTinChi, lhp.MaHK, h.TenHK, lhp.SucChua, " +
+                     "(SELECT COUNT(*) FROM KET_QUA_DANG_KY kq WHERE kq.MaLHP = lhp.MaLHP) AS SiSo, " +
+                     "lhp.Thu, lhp.TietHoc, lhp.PhongHoc, lhp.NgayBatDauHoc, lhp.NgayKetThucHoc " +
+                     "FROM LOP_HOC_PHAN lhp " +
+                     "JOIN MON_HOC m ON lhp.MaMon = m.MaMon " +
+                     "LEFT JOIN HOC_KY h ON lhp.MaHK = h.MaHK " +
+                     "WHERE lhp.MaGV = ? " +
+                     "ORDER BY lhp.MaHK DESC, lhp.MaLHP";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maGV);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ket.add(new Object[]{
+                        rs.getString("MaLHP"), rs.getString("TenMon"), rs.getInt("SoTinChi"),
+                        rs.getString("MaHK"), rs.getString("TenHK"), rs.getInt("SucChua"), rs.getInt("SiSo"),
+                        rs.getString("Thu"), rs.getString("TietHoc"), rs.getString("PhongHoc"),
+                        rs.getDate("NgayBatDauHoc"), rs.getDate("NgayKetThucHoc")
+                    });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
+    }
+
+    // Danh sách SV (kèm điểm hiện có) trong 1 lớp học phần - phục vụ màn hình Nhập điểm
+    public List<Object[]> getSinhVienTrongLopHP(String maLHP) {
+        List<Object[]> ket = new ArrayList<>();
+        String sql = "SELECT sv.MaSV, sv.HoTen, kq.DiemChuyenCan, kq.DiemGiuaKy, kq.DiemCuoiKy, kq.DiemTongKet, kq.TrangThai " +
+                     "FROM KET_QUA_DANG_KY kq " +
+                     "JOIN SINH_VIEN sv ON kq.MaSV = sv.MaSV " +
+                     "WHERE kq.MaLHP = ? ORDER BY sv.HoTen";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ket.add(new Object[]{
+                        rs.getString("MaSV"), rs.getString("HoTen"),
+                        rs.getDouble("DiemChuyenCan"), rs.getDouble("DiemGiuaKy"), rs.getDouble("DiemCuoiKy"),
+                        rs.getDouble("DiemTongKet"), rs.getString("TrangThai")
+                    });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
+    }
+
+    // CHẶN Ở TẦNG DỮ LIỆU: xác nhận GV này thực sự phụ trách lớp trước khi cho phép sửa điểm
+    // (không tin tưởng vào UI - phòng trường hợp sau này có API/URL truyền MaLHP tùy ý).
+    public boolean isGVPhuTrachLop(String maGV, String maLHP) {
+        String sql = "SELECT COUNT(*) FROM LOP_HOC_PHAN WHERE MaLHP = ? AND MaGV = ?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP); ps.setString(2, maGV);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt(1) > 0;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    // Cập nhật điểm thành phần cho 1 SV trong 1 lớp học phần.
+    // Tự tính DiemTongKet (CC 10% + GK 30% + CK 60% - có thể điều chỉnh hệ số tại đây)
+    // và TrangThai (ngưỡng đạt = 5.0/10, theo quy chế phổ biến).
+    public void capNhatDiemSinhVien(String maSV, String maLHP, double chuyenCan, double giuaKy, double cuoiKy) {
+        double tongKet = chuyenCan * 0.1 + giuaKy * 0.3 + cuoiKy * 0.6;
+        tongKet = Math.round(tongKet * 100.0) / 100.0;
+        String trangThai = tongKet >= 5.0 ? "Đạt" : "Không đạt";
+
+        String sql = "UPDATE KET_QUA_DANG_KY SET DiemChuyenCan=?, DiemGiuaKy=?, DiemCuoiKy=?, DiemTongKet=?, TrangThai=? " +
+                     "WHERE MaSV=? AND MaLHP=?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, chuyenCan);
+            ps.setDouble(2, giuaKy);
+            ps.setDouble(3, cuoiKy);
+            ps.setDouble(4, tongKet);
+            ps.setString(5, trangThai);
+            ps.setString(6, maSV);
+            ps.setString(7, maLHP);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    // ==========================================================
+    // 6. NGHIỆP VỤ ĐIỂM DANH (Giảng viên điểm danh SV theo từng buổi học)
+    // ==========================================================
+
+    // Cap nhat / them moi 1 dong diem danh (upsert theo khoa chinh MaLHP+MaSV+NgayHoc)
+    public void upsertDiemDanh(String maLHP, String maSV, Date ngayHoc, String trangThai, String ghiChu) {
+        String sql = "IF EXISTS (SELECT 1 FROM DIEM_DANH WHERE MaLHP=? AND MaSV=? AND NgayHoc=?) " +
+                     "UPDATE DIEM_DANH SET TrangThai=?, GhiChu=? WHERE MaLHP=? AND MaSV=? AND NgayHoc=? " +
+                     "ELSE INSERT INTO DIEM_DANH (MaLHP, MaSV, NgayHoc, TrangThai, GhiChu) VALUES (?,?,?,?,?)";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP);  ps.setString(2, maSV);  ps.setDate(3, ngayHoc);
+            ps.setString(4, trangThai); ps.setString(5, ghiChu);
+            ps.setString(6, maLHP);  ps.setString(7, maSV);  ps.setDate(8, ngayHoc);
+            ps.setString(9, maLHP);  ps.setString(10, maSV); ps.setDate(11, ngayHoc);
+            ps.setString(12, trangThai); ps.setString(13, ghiChu);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    // Lay diem danh da luu cho 1 lop trong 1 ngay cu the (de hien thi lai khi GV mo lai form diem danh)
+    // Key cua Map la MaSV, value la {TrangThai, GhiChu}
+    public Map<String, Object[]> getDiemDanhTheoNgay(String maLHP, Date ngayHoc) {
+        Map<String, Object[]> ket = new HashMap<>();
+        String sql = "SELECT MaSV, TrangThai, GhiChu FROM DIEM_DANH WHERE MaLHP = ? AND NgayHoc = ?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP); ps.setDate(2, ngayHoc);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ket.put(rs.getString("MaSV"), new Object[]{ rs.getString("TrangThai"), rs.getString("GhiChu") });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
+    }
+
+    // Thong ke diem danh theo tung SV trong 1 lop: tong so buoi da diem danh, so vang, so vang co phep.
+    // Dung LEFT JOIN tu KET_QUA_DANG_KY (danh sach SV cua lop) sang DIEM_DANH, nen SV chua duoc
+    // diem danh buoi nao van hien trong ket qua voi TongBuoi = 0 (khong bi mat khoi danh sach).
+    public List<Object[]> getThongKeDiemDanhTheoLop(String maLHP) {
+        List<Object[]> ket = new ArrayList<>();
+        String sql = "SELECT sv.MaSV, sv.HoTen, " +
+                     "COUNT(dd.NgayHoc) AS TongBuoi, " +
+                     "SUM(CASE WHEN dd.TrangThai = N'Vắng' THEN 1 ELSE 0 END) AS SoVang, " +
+                     "SUM(CASE WHEN dd.TrangThai = N'Vắng có phép' THEN 1 ELSE 0 END) AS SoVangCoPhep " +
+                     "FROM KET_QUA_DANG_KY kq " +
+                     "JOIN SINH_VIEN sv ON kq.MaSV = sv.MaSV " +
+                     "LEFT JOIN DIEM_DANH dd ON dd.MaLHP = kq.MaLHP AND dd.MaSV = kq.MaSV " +
+                     "WHERE kq.MaLHP = ? " +
+                     "GROUP BY sv.MaSV, sv.HoTen " +
+                     "ORDER BY sv.HoTen";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ket.add(new Object[]{
+                        rs.getString("MaSV"), rs.getString("HoTen"),
+                        rs.getInt("TongBuoi"), rs.getInt("SoVang"), rs.getInt("SoVangCoPhep")
+                    });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
+    }
+
+    // ==========================================================
+    // 7. NGHIỆP VỤ SỒ ĐẦU BÀI (Giảng viên ghi nội dung đã dạy theo từng buổi học)
+    // ==========================================================
+
+    // Upsert 1 dong so dau bai theo khoa chinh MaLHP+NgayHoc
+    public void upsertSoDauBai(String maLHP, Date ngayHoc, String noiDungDay, String ghiChu) {
+        String sql = "IF EXISTS (SELECT 1 FROM SO_DAU_BAI WHERE MaLHP=? AND NgayHoc=?) " +
+                     "UPDATE SO_DAU_BAI SET NoiDungDay=?, GhiChu=? WHERE MaLHP=? AND NgayHoc=? " +
+                     "ELSE INSERT INTO SO_DAU_BAI (MaLHP, NgayHoc, NoiDungDay, GhiChu) VALUES (?,?,?,?)";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP);  ps.setDate(2, ngayHoc);
+            ps.setString(3, noiDungDay); ps.setString(4, ghiChu);
+            ps.setString(5, maLHP);  ps.setDate(6, ngayHoc);
+            ps.setString(7, maLHP);  ps.setDate(8, ngayHoc);
+            ps.setString(9, noiDungDay); ps.setString(10, ghiChu);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    // Lay so dau bai da ghi cho 1 lop trong 1 ngay cu the -> {NoiDungDay, GhiChu}, hoac null neu chua ghi
+    public Object[] getSoDauBai(String maLHP, Date ngayHoc) {
+        String sql = "SELECT NoiDungDay, GhiChu FROM SO_DAU_BAI WHERE MaLHP = ? AND NgayHoc = ?";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP); ps.setDate(2, ngayHoc);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return new Object[]{ rs.getString("NoiDungDay"), rs.getString("GhiChu") };
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
+    // Toan bo lich su so dau bai cua 1 lop (moi nhat truoc), phuc vu xem lai / chon sua
+    public List<Object[]> getLichSuSoDauBai(String maLHP) {
+        List<Object[]> ket = new ArrayList<>();
+        String sql = "SELECT NgayHoc, NoiDungDay, GhiChu FROM SO_DAU_BAI WHERE MaLHP = ? ORDER BY NgayHoc DESC";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLHP);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ket.add(new Object[]{ rs.getDate("NgayHoc"), rs.getString("NoiDungDay"), rs.getString("GhiChu") });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
     }
 }

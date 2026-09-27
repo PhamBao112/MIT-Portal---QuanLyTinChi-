@@ -42,10 +42,46 @@ public class AdminUserPanel extends JPanel {
     private JTextField txtMaGV, txtHoTenGV, txtSdtGV, txtEmailGV, txtKhoaGV;
     private JComboBox<String> cbGioiTinhGV, cbHocViGV;
 
+    private JLabel lblHeroSub;
+    private JPanel heroRingHolder;
+
     public AdminUserPanel(StudentManagerService service) {
         setLayout(new BorderLayout(0, 15));
         setBackground(UIUtils.BG_APP);
         setBorder(new EmptyBorder(5, 0, 0, 0));
+
+        // --- V9: banner gradient + vong tron ty le SV dang hoc ---
+        JPanel hero = UIUtils.createHeroBanner();
+        hero.setLayout(new BorderLayout(20, 0));
+        hero.setBorder(new EmptyBorder(20, 28, 20, 26));
+        hero.setMaximumSize(new Dimension(6000, 108));
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel heroLeft = new JPanel();
+        heroLeft.setLayout(new BoxLayout(heroLeft, BoxLayout.Y_AXIS));
+        heroLeft.setOpaque(false);
+        JLabel lblHeroTitle = new JLabel("Quản Lý Sinh Viên & Giảng Viên");
+        lblHeroTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lblHeroTitle.setForeground(Color.WHITE);
+        lblHeroTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub = new JLabel("Đang tải dữ liệu...");
+        lblHeroSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblHeroSub.setForeground(new Color(255, 255, 255, 215));
+        lblHeroSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub.setBorder(new EmptyBorder(6, 0, 0, 0));
+        heroLeft.add(Box.createVerticalGlue());
+        heroLeft.add(lblHeroTitle);
+        heroLeft.add(lblHeroSub);
+        heroLeft.add(Box.createVerticalGlue());
+
+        heroRingHolder = new JPanel(new BorderLayout());
+        heroRingHolder.setOpaque(false);
+        heroRingHolder.setPreferredSize(new Dimension(96, 96));
+        heroRingHolder.add(UIUtils.createRadialProgress(0, "0%", "Đang học",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+
+        hero.add(heroLeft, BorderLayout.WEST);
+        hero.add(heroRingHolder, BorderLayout.EAST);
 
         // ==========================================
         // 1. THANH ĐIỀU HƯỚNG (TOGGLE TABS)
@@ -83,10 +119,37 @@ public class AdminUserPanel extends JPanel {
             loadDataGV();
         });
 
-        add(togglePanel, BorderLayout.NORTH);
-        add(contentPanel, BorderLayout.CENTER);
+        add(hero, BorderLayout.NORTH);
+        JPanel southHolder = new JPanel(new BorderLayout());
+        southHolder.setOpaque(false);
+        southHolder.setBorder(new EmptyBorder(20, 0, 0, 0));
+        southHolder.add(togglePanel, BorderLayout.NORTH);
+        southHolder.add(contentPanel, BorderLayout.CENTER);
+        add(southHolder, BorderLayout.CENTER);
 
         loadDataSV();
+    }
+
+    /** V9: nap so lieu tong quan (tong SV, tong GV, ty le dang hoc) cho banner - doc lap voi
+     * tab dang mo, goi lai moi khi loadDataSV/loadDataGV chay de banner luon dung dữ liệu mới. */
+    private void refreshHeroStats() {
+        int tongSV = 0, tongGV = 0, dangHoc = 0;
+        try (Connection conn = DBConnect.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM SINH_VIEN");
+                 ResultSet rs = ps.executeQuery()) { if (rs.next()) tongSV = rs.getInt(1); }
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM SINH_VIEN WHERE TrangThaiHocTap = N'Đang học'");
+                 ResultSet rs = ps.executeQuery()) { if (rs.next()) dangHoc = rs.getInt(1); }
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM GIANG_VIEN");
+                 ResultSet rs = ps.executeQuery()) { if (rs.next()) tongGV = rs.getInt(1); }
+        } catch (Exception e) { e.printStackTrace(); }
+
+        lblHeroSub.setText(tongSV + " sinh viên  ·  " + tongGV + " giảng viên");
+        int pct = tongSV > 0 ? (int) Math.round(dangHoc * 100.0 / tongSV) : 0;
+        heroRingHolder.removeAll();
+        heroRingHolder.add(UIUtils.createRadialProgress(pct, pct + "%", "Đang học",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+        heroRingHolder.revalidate();
+        heroRingHolder.repaint();
     }
 
     // ========================================================
@@ -175,11 +238,11 @@ public class AdminUserPanel extends JPanel {
         btnGrid.setOpaque(false);
         btnGrid.setBorder(new EmptyBorder(4, 20, 16, 20));
 
-        JButton btnClear = UIUtils.createSecondaryBtn("Làm mới");
-        JButton btnAdd = UIUtils.createPrimaryBtn("Thêm mới");
-        JButton btnUpdate = UIUtils.createPrimaryBtn("Cập nhật");
-        JButton btnDel = UIUtils.createDangerBtn("Xóa bỏ");
-        Dimension btnSize = new Dimension(120, 38);
+        JButton btnClear = UIUtils.createSecondaryBtn("refresh", "Làm mới");
+        JButton btnAdd = UIUtils.createPrimaryBtn("plus", "Thêm mới");
+        JButton btnUpdate = UIUtils.createPrimaryBtn("check", "Cập nhật");
+        JButton btnDel = UIUtils.createDangerBtn("trash", "Xóa bỏ");
+        Dimension btnSize = new Dimension(130, 38);
         for (JButton b : new JButton[]{btnClear, btnAdd, btnUpdate, btnDel}) b.setPreferredSize(btnSize);
 
         btnGrid.add(btnClear); btnGrid.add(btnAdd); btnGrid.add(btnUpdate); btnGrid.add(btnDel);
@@ -333,11 +396,11 @@ public class AdminUserPanel extends JPanel {
         btnGrid.setOpaque(false);
         btnGrid.setBorder(new EmptyBorder(4, 20, 16, 20));
 
-        JButton btnClear = UIUtils.createSecondaryBtn("Làm mới");
-        JButton btnAdd = UIUtils.createPrimaryBtn("Thêm mới");
-        JButton btnUpdate = UIUtils.createPrimaryBtn("Cập nhật");
-        JButton btnDel = UIUtils.createDangerBtn("Xóa bỏ");
-        Dimension btnSize = new Dimension(120, 38);
+        JButton btnClear = UIUtils.createSecondaryBtn("refresh", "Làm mới");
+        JButton btnAdd = UIUtils.createPrimaryBtn("plus", "Thêm mới");
+        JButton btnUpdate = UIUtils.createPrimaryBtn("check", "Cập nhật");
+        JButton btnDel = UIUtils.createDangerBtn("trash", "Xóa bỏ");
+        Dimension btnSize = new Dimension(130, 38);
         for (JButton b : new JButton[]{btnClear, btnAdd, btnUpdate, btnDel}) b.setPreferredSize(btnSize);
 
         btnGrid.add(btnClear); btnGrid.add(btnAdd); btnGrid.add(btnUpdate); btnGrid.add(btnDel);
@@ -423,6 +486,7 @@ public class AdminUserPanel extends JPanel {
             }
             capNhatDanhSachLoc(cbLopFilter, lopList);
         } catch (Exception e) { e.printStackTrace(); }
+        refreshHeroStats();
     }
 
     private void loadDataGV() {

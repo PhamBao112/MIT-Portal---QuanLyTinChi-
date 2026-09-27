@@ -79,16 +79,51 @@ public class DiemPanel extends JPanel {
         // 1. TẢI DỮ LIỆU THỐNG KÊ
         loadStatsData();
 
-        // 2. KPI CARD DÙNG CHUNG (UIUtils.createKpiCard)
-        topStatsPanel = new JPanel(new GridLayout(1, 4, 15, 0));
+        // 2. KPI CARD DÙNG CHUNG (UIUtils.createKpiCard) - bo GPA Hệ 4 vì đã thể hiện
+        // qua vong tron tren banner ben duoi, tranh trung lap thong tin.
+        topStatsPanel = new JPanel(new GridLayout(1, 3, 15, 0));
         topStatsPanel.setBackground(UIUtils.BG_APP);
         topStatsPanel.setMaximumSize(new Dimension(6000, 140));
         topStatsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        topStatsPanel.add(UIUtils.createKpiCard("📘", tcKyNay + " TC", "Tín chỉ đạt kỳ này", new Color(37, 99, 235)));
-        topStatsPanel.add(UIUtils.createKpiCard("🎯", String.format("%.2f", gpa10), "Điểm TB Học kỳ (Hệ 10)", UIUtils.MIT_ORANGE));
-        topStatsPanel.add(UIUtils.createKpiCard("⭐", String.format("%.2f", gpa4), "Điểm TB Học kỳ (Hệ 4)", UIUtils.GREEN_500));
-        topStatsPanel.add(UIUtils.createKpiCard("🏅", xepLoai, "Xếp loại Học kỳ", UIUtils.MIT_RED));
+        topStatsPanel.add(UIUtils.createKpiCard("book", tcKyNay + " TC", "Tín chỉ đạt kỳ này", new Color(37, 99, 235)));
+        topStatsPanel.add(UIUtils.createKpiCard("target", String.format("%.2f", gpa10), "Điểm TB Học kỳ (Hệ 10)", UIUtils.MIT_ORANGE));
+        topStatsPanel.add(UIUtils.createKpiCard("medal", xepLoai, "Xếp loại Học kỳ", UIUtils.MIT_RED));
+
+        // V9: banner gradient + vong tron GPA Hệ 4 - dong bo phong cach voi Dashboard
+        JPanel hero = UIUtils.createHeroBanner();
+        hero.setLayout(new BorderLayout(20, 0));
+        hero.setBorder(new EmptyBorder(18, 28, 18, 26));
+        hero.setMaximumSize(new Dimension(6000, 100));
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel heroLeft = new JPanel();
+        heroLeft.setLayout(new BoxLayout(heroLeft, BoxLayout.Y_AXIS));
+        heroLeft.setOpaque(false);
+        JLabel lblHeroTitle = new JLabel("Kết quả học tập – " + currentTenHK);
+        lblHeroTitle.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        lblHeroTitle.setForeground(Color.WHITE);
+        lblHeroTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel lblHeroSub = new JLabel(gpa4 > 0
+            ? "Xếp loại: " + xepLoai + "  ·  " + tcKyNay + " tín chỉ đạt kỳ này"
+            : "Chưa có điểm tổng kết trong học kỳ này");
+        lblHeroSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblHeroSub.setForeground(new Color(255, 255, 255, 215));
+        lblHeroSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub.setBorder(new EmptyBorder(6, 0, 0, 0));
+        heroLeft.add(Box.createVerticalGlue());
+        heroLeft.add(lblHeroTitle);
+        heroLeft.add(lblHeroSub);
+        heroLeft.add(Box.createVerticalGlue());
+
+        int pctGpa4 = (int) Math.round(Math.min(100.0, gpa4 * 100.0 / 4.0));
+        JComponent ring = UIUtils.createRadialProgress(pctGpa4, String.format("%.2f", gpa4), "GPA / 4.0",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE);
+        ring.setPreferredSize(new Dimension(88, 88));
+        ring.setOpaque(false);
+
+        hero.add(heroLeft, BorderLayout.WEST);
+        hero.add(ring, BorderLayout.EAST);
 
         // 3. BẢNG ĐIỂM CHI TIẾT (card shell dùng chung)
         tableContainer = UIUtils.createCardShell("Bảng Điểm Chi Tiết - " + currentTenHK, UIUtils.MIT_RED);
@@ -129,6 +164,8 @@ public class DiemPanel extends JPanel {
         northWrapper.setLayout(new BoxLayout(northWrapper, BoxLayout.Y_AXIS));
         northWrapper.setBackground(UIUtils.BG_APP);
         northWrapper.add(topBar);
+        northWrapper.add(Box.createVerticalStrut(15));
+        northWrapper.add(hero);
         northWrapper.add(Box.createVerticalStrut(15));
         northWrapper.add(topStatsPanel);
 

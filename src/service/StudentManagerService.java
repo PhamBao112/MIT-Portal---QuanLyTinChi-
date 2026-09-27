@@ -8,7 +8,9 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.util.List;
+import java.util.Map;
 
 public class StudentManagerService {
     private TruongHocDAO dao;
@@ -201,6 +203,135 @@ public class StudentManagerService {
             }
         } catch (Exception e) { throw new BusinessLogicException("Lỗi đọc file Excel (.xlsx)"); }
         return "Import Excel Sinh Viên hoàn tất!\n- Thành công: " + countSuccess + "\n- Lỗi/Bỏ qua: " + countFail;
+    }
+
+    // ==========================================================
+    // CÁC HÀM PHỤC VỤ GIẢNG VIÊN (đăng nhập, xem lớp, nhập điểm)
+    // ==========================================================
+    public String getMaGVByEmail(String email) {
+        return dao.getMaGVByEmail(email);
+    }
+
+    public Object[] getThongTinGV(String maGV) {
+        return dao.getThongTinGV(maGV);
+    }
+
+    public List<Object[]> getLopHocPhanByGV(String maGV) {
+        return dao.getLopHocPhanByGV(maGV);
+    }
+
+    public List<Object[]> getSinhVienTrongLopHP(String maLHP) {
+        return dao.getSinhVienTrongLopHP(maLHP);
+    }
+
+    // FIX (bảo mật): chặn ngay ở Service - không cho GV sửa điểm lớp GV khác phụ trách,
+    // kể cả khi tham số maLHP bị truyền sai/giả mạo từ UI.
+    public void capNhatDiemSinhVien(String maGV, String maSV, String maLHP, double chuyenCan, double giuaKy, double cuoiKy) throws BusinessLogicException {
+        if (!dao.isGVPhuTrachLop(maGV, maLHP)) {
+            throw new BusinessLogicException("Bạn không phụ trách lớp học phần này, không thể sửa điểm!");
+        }
+        if (chuyenCan < 0 || chuyenCan > 10 || giuaKy < 0 || giuaKy > 10 || cuoiKy < 0 || cuoiKy > 10) {
+            throw new BusinessLogicException("Điểm phải nằm trong khoảng 0 - 10!");
+        }
+        dao.capNhatDiemSinhVien(maSV, maLHP, chuyenCan, giuaKy, cuoiKy);
+    }
+
+    // ==========================================================
+    // ĐIỂM DANH (Giảng viên điểm danh SV theo từng buổi học)
+    // ==========================================================
+
+    // danhSach: mỗi phần tử là {MaSV, TrangThai, GhiChu}
+    public void luuDiemDanh(String maGV, String maLHP, java.sql.Date ngayHoc, List<Object[]> danhSach) throws BusinessLogicException {
+        if (!dao.isGVPhuTrachLop(maGV, maLHP)) {
+            throw new BusinessLogicException("Bạn không phụ trách lớp học phần này, không thể điểm danh!");
+        }
+        for (Object[] row : danhSach) {
+            dao.upsertDiemDanh(maLHP, (String) row[0], ngayHoc, (String) row[1], (String) row[2]);
+        }
+    }
+
+    public Map<String, Object[]> getDiemDanhTheoNgay(String maLHP, java.sql.Date ngayHoc) {
+        return dao.getDiemDanhTheoNgay(maLHP, ngayHoc);
+    }
+
+    public List<Object[]> getThongKeDiemDanhTheoLop(String maLHP) {
+        return dao.getThongKeDiemDanhTheoLop(maLHP);
+    }
+
+    // ==========================================================
+    // SỔ ĐẦU BÀI (Giảng viên ghi nội dung đã dạy theo từng buổi học)
+    // ==========================================================
+    public void luuSoDauBai(String maGV, String maLHP, java.sql.Date ngayHoc, String noiDungDay, String ghiChu) throws BusinessLogicException {
+        if (!dao.isGVPhuTrachLop(maGV, maLHP)) {
+            throw new BusinessLogicException("Bạn không phụ trách lớp học phần này, không thể ghi sổ đầu bài!");
+        }
+        if (noiDungDay == null || noiDungDay.trim().isEmpty()) {
+            throw new BusinessLogicException("Vui lòng nhập nội dung đã dạy trước khi lưu!");
+        }
+        dao.upsertSoDauBai(maLHP, ngayHoc, noiDungDay.trim(), ghiChu == null ? "" : ghiChu.trim());
+    }
+
+    public Object[] getSoDauBai(String maLHP, java.sql.Date ngayHoc) {
+        return dao.getSoDauBai(maLHP, ngayHoc);
+    }
+
+    public List<Object[]> getLichSuSoDauBai(String maLHP) {
+        return dao.getLichSuSoDauBai(maLHP);
+    }
+
+    // ==========================================================
+    // XUẤT BẢNG ĐIỂM LỚP HỌC PHẦN RA EXCEL
+    // ==========================================================
+    public void xuatBangDiemExcel(String maLHP, String tenMon, String tenHK, String filePath) throws BusinessLogicException {
+        List<Object[]> ds = dao.getSinhVienTrongLopHP(maLHP);
+        try (XSSFWorkbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("BangDiem");
+
+            CellStyle titleStyle = wb.createCellStyle();
+            Font titleFont = wb.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 14);
+            titleStyle.setFont(titleFont);
+
+            CellStyle headerStyle = wb.createCellStyle();
+            Font headerFont = wb.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+
+            Row rowTitle = sheet.createRow(0);
+            Cell cellTitle = rowTitle.createCell(0);
+            cellTitle.setCellValue("BẢNG ĐIỂM LỚP " + maLHP + " - " + tenMon + " (" + tenHK + ")");
+            cellTitle.setCellStyle(titleStyle);
+
+            String[] columns = {"MSSV", "Họ và tên", "Chuyên cần", "Giữa kỳ", "Cuối kỳ", "Tổng kết", "Trạng thái"};
+            Row rowHeader = sheet.createRow(2);
+            for (int i = 0; i < columns.length; i++) {
+                Cell c = rowHeader.createCell(i);
+                c.setCellValue(columns[i]);
+                c.setCellStyle(headerStyle);
+            }
+
+            int r = 3;
+            for (Object[] sv : ds) {
+                Row row = sheet.createRow(r++);
+                row.createCell(0).setCellValue((String) sv[0]);
+                row.createCell(1).setCellValue((String) sv[1]);
+                row.createCell(2).setCellValue((double) sv[2]);
+                row.createCell(3).setCellValue((double) sv[3]);
+                row.createCell(4).setCellValue((double) sv[4]);
+                row.createCell(5).setCellValue((double) sv[5]);
+                row.createCell(6).setCellValue((String) sv[6]);
+            }
+
+            for (int i = 0; i < columns.length; i++) sheet.autoSizeColumn(i);
+
+            try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                wb.write(fos);
+            }
+        } catch (Exception e) {
+            throw new BusinessLogicException("Lỗi khi xuất file Excel: " + e.getMessage());
+        }
     }
 
     public String importGiangVienFromExcel(String filePath) throws BusinessLogicException {

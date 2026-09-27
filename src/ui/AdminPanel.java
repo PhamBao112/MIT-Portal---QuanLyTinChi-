@@ -120,15 +120,15 @@ public class AdminPanel extends JPanel {
 
         // --- 4. TẠO 6 NÚT SIDEBAR (V3 - dùng UIUtils.createSidebarButton) ---
         sidebar.add(UIUtils.createSidebarGroupLabel("Tổng quan"));
-        JButton btnDash = createNavBtn("▣", "Trang chủ tổng quan");
+        JButton btnDash = createNavBtn("dashboard", "Trang chủ tổng quan");
         sidebar.add(btnDash);
 
         sidebar.add(UIUtils.createSidebarGroupLabel("Quản lý"));
-        JButton btnQLUser = createNavBtn("👤", "SV & Giảng viên");
-        JButton btnQLLHP  = createNavBtn("📚", "Lớp học phần & xếp lịch");
-        JButton btnCongNo = createNavBtn("💳", "Thu công nợ");
-        JButton btnBaoCao = createNavBtn("📊", "Thống kê & báo cáo");
-        JButton btnImport = createNavBtn("⇪", "Nạp dữ liệu Excel");
+        JButton btnQLUser = createNavBtn("users", "SV & Giảng viên");
+        JButton btnQLLHP  = createNavBtn("book", "Lớp học phần & xếp lịch");
+        JButton btnCongNo = createNavBtn("card", "Thu công nợ");
+        JButton btnBaoCao = createNavBtn("chart", "Thống kê & báo cáo");
+        JButton btnImport = createNavBtn("upload", "Nạp dữ liệu Excel");
         sidebar.add(btnQLUser);
         sidebar.add(btnQLLHP);
         sidebar.add(btnCongNo);
@@ -151,7 +151,7 @@ public class AdminPanel extends JPanel {
         sidebar.add(sep2);
         sidebar.add(Box.createVerticalStrut(6));
 
-        JButton btnLogout = UIUtils.createSidebarButton("🚪", "Đăng xuất");
+        JButton btnLogout = UIUtils.createSidebarButton("logout", "Đăng xuất");
         btnLogout.addActionListener(e -> {
             Container parent = this.getParent();
             if (parent != null && parent.getLayout() instanceof CardLayout) {

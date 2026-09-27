@@ -23,11 +23,46 @@ public class AdminLopHocPhanPanel extends JPanel {
     private JTextField txtMaLHP, txtMonHoc, txtHK, txtPhong, txtSucChua, txtMaGV;
     private JComboBox<String> cbThu, cbTiet;
     private JCheckBox chkChuaXepLich;
+    private JLabel lblHeroSub;
+    private JPanel heroRingHolder;
 
     public AdminLopHocPhanPanel() {
         setLayout(new BorderLayout(0, 20));
         setBackground(UIUtils.BG_APP);
         setBorder(new EmptyBorder(5, 0, 0, 0));
+
+        // --- V9: banner gradient + vong tron ty le lop DA xep lich ---
+        JPanel hero = UIUtils.createHeroBanner();
+        hero.setLayout(new BorderLayout(20, 0));
+        hero.setBorder(new EmptyBorder(20, 28, 20, 26));
+        hero.setMaximumSize(new Dimension(6000, 108));
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel heroLeft = new JPanel();
+        heroLeft.setLayout(new BoxLayout(heroLeft, BoxLayout.Y_AXIS));
+        heroLeft.setOpaque(false);
+        JLabel lblHeroTitle = new JLabel("Lớp Học Phần & Xếp Lịch");
+        lblHeroTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lblHeroTitle.setForeground(Color.WHITE);
+        lblHeroTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub = new JLabel("Đang tải dữ liệu...");
+        lblHeroSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblHeroSub.setForeground(new Color(255, 255, 255, 215));
+        lblHeroSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub.setBorder(new EmptyBorder(6, 0, 0, 0));
+        heroLeft.add(Box.createVerticalGlue());
+        heroLeft.add(lblHeroTitle);
+        heroLeft.add(lblHeroSub);
+        heroLeft.add(Box.createVerticalGlue());
+
+        heroRingHolder = new JPanel(new BorderLayout());
+        heroRingHolder.setOpaque(false);
+        heroRingHolder.setPreferredSize(new Dimension(96, 96));
+        heroRingHolder.add(UIUtils.createRadialProgress(0, "0%", "Đã xếp",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+
+        hero.add(heroLeft, BorderLayout.WEST);
+        hero.add(heroRingHolder, BorderLayout.EAST);
 
         // ========================================================
         // 1. BẢNG DANH SÁCH LỚP HỌC PHẦN (card shell dùng chung)
@@ -110,10 +145,10 @@ public class AdminLopHocPhanPanel extends JPanel {
         btnGrid.setOpaque(false);
         btnGrid.setBorder(new EmptyBorder(4, 20, 16, 20));
 
-        JButton btnClear = UIUtils.createSecondaryBtn("Làm mới");
-        JButton btnAdd = UIUtils.createPrimaryBtn("Mở lớp mới");
-        JButton btnUpdate = UIUtils.createPrimaryBtn("Lưu lịch học");
-        JButton btnDel = UIUtils.createDangerBtn("Hủy lớp");
+        JButton btnClear = UIUtils.createSecondaryBtn("refresh", "Làm mới");
+        JButton btnAdd = UIUtils.createPrimaryBtn("plus", "Mở lớp mới");
+        JButton btnUpdate = UIUtils.createPrimaryBtn("check", "Lưu lịch học");
+        JButton btnDel = UIUtils.createDangerBtn("trash", "Hủy lớp");
         Dimension btnSize = new Dimension(130, 38);
         for (JButton b : new JButton[]{btnClear, btnAdd, btnUpdate, btnDel}) b.setPreferredSize(btnSize);
 
@@ -206,7 +241,18 @@ public class AdminLopHocPhanPanel extends JPanel {
             }
         });
 
-        add(tableWrapper, BorderLayout.CENTER);
+        JPanel topSection = new JPanel();
+        topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
+        topSection.setOpaque(false);
+        topSection.add(hero);
+        topSection.add(Box.createVerticalStrut(20));
+
+        JPanel centerWrapper = new JPanel(new BorderLayout());
+        centerWrapper.setOpaque(false);
+        centerWrapper.add(topSection, BorderLayout.NORTH);
+        centerWrapper.add(tableWrapper, BorderLayout.CENTER);
+
+        add(centerWrapper, BorderLayout.CENTER);
         add(formWrapper, BorderLayout.SOUTH);
     }
 
@@ -229,6 +275,8 @@ public class AdminLopHocPhanPanel extends JPanel {
         this.currentMaHK = maHK;
         txtHK.setText(maHK);
         model.setRowCount(0);
+        int tongLop = 0;
+        int daXepLich = 0;
 
         String sql = "SELECT lhp.MaLHP, lhp.MaMon, m.TenMon, lhp.TrangThaiXepLich, lhp.Thu, lhp.TietHoc, lhp.PhongHoc, lhp.SucChua, lhp.MaGV, " +
                      "(SELECT COUNT(*) FROM KET_QUA_DANG_KY WHERE MaLHP = lhp.MaLHP) as DaDK " +
@@ -237,8 +285,11 @@ public class AdminLopHocPhanPanel extends JPanel {
             ps.setString(1, maHK);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
+                String trangThai = rs.getString("TrangThaiXepLich");
+                tongLop++;
+                if ("Đã xếp lịch".equals(trangThai)) daXepLich++;
                 model.addRow(new Object[]{
-                    rs.getString("MaLHP"), rs.getString("MaMon"), rs.getString("TenMon"), rs.getString("TrangThaiXepLich"),
+                    rs.getString("MaLHP"), rs.getString("MaMon"), rs.getString("TenMon"), trangThai,
                     rs.getString("Thu"), rs.getString("TietHoc"), rs.getString("PhongHoc"), rs.getInt("SucChua"), rs.getInt("DaDK"),
                     rs.getString("MaGV")
                 });
@@ -246,6 +297,15 @@ public class AdminLopHocPhanPanel extends JPanel {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        lblHeroSub.setText(tongLop + " lớp học phần đang mở trong " + maHK
+            + "  ·  " + daXepLich + " lớp đã xếp lịch");
+        int pctXep = tongLop > 0 ? (int) Math.round(daXepLich * 100.0 / tongLop) : 0;
+        heroRingHolder.removeAll();
+        heroRingHolder.add(UIUtils.createRadialProgress(pctXep, pctXep + "%", "Đã xếp",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+        heroRingHolder.revalidate();
+        heroRingHolder.repaint();
     }
 
     private void executeDB(String sql, String actionName, Object... params) {

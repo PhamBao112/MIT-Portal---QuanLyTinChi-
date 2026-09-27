@@ -19,6 +19,7 @@ public class AdminDashboardPanel extends JPanel {
     private String currentMaHK = "";
     private DefaultTableModel tableModel;
     private JPanel statsRow;
+    private JPanel heroRingHolder;
     private JLabel lblTableTitle;
     private JTable table;
 
@@ -26,10 +27,57 @@ public class AdminDashboardPanel extends JPanel {
         setLayout(new BorderLayout(0, 20));
         setBackground(UIUtils.BG_APP);
 
+        // --- 0. BANNER CHAO MUNG (V9) + VONG TRON TY LE LOP CON CHO ---
+        JPanel hero = UIUtils.createHeroBanner();
+        hero.setLayout(new BorderLayout(24, 0));
+        hero.setBorder(new EmptyBorder(22, 30, 22, 28));
+        hero.setMaximumSize(new Dimension(6000, 120));
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel heroLeft = new JPanel();
+        heroLeft.setLayout(new BoxLayout(heroLeft, BoxLayout.Y_AXIS));
+        heroLeft.setOpaque(false);
+        JLabel lblGreeting = new JLabel(UIUtils.greetingByHour() + ", Quản trị viên!");
+        lblGreeting.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        lblGreeting.setForeground(Color.WHITE);
+        lblGreeting.setAlignmentX(Component.LEFT_ALIGNMENT);
+        String todayStr;
+        try {
+            todayStr = new java.text.SimpleDateFormat("EEEE, dd/MM/yyyy", new java.util.Locale("vi", "VN")).format(new java.util.Date());
+        } catch (Exception ex) {
+            todayStr = new java.text.SimpleDateFormat("dd/MM/yyyy").format(new java.util.Date());
+        }
+        JLabel lblSub = new JLabel("Hệ thống Quản Lý Đào Tạo  ·  " + todayStr);
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblSub.setForeground(new Color(255, 255, 255, 215));
+        lblSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblSub.setBorder(new EmptyBorder(6, 0, 0, 0));
+        heroLeft.add(Box.createVerticalGlue());
+        heroLeft.add(lblGreeting);
+        heroLeft.add(lblSub);
+        heroLeft.add(Box.createVerticalGlue());
+
+        heroRingHolder = new JPanel(new BorderLayout());
+        heroRingHolder.setOpaque(false);
+        heroRingHolder.setPreferredSize(new Dimension(96, 96));
+        JComponent ring0 = UIUtils.createRadialProgress(0, "0%", "Còn chỗ", UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE);
+        heroRingHolder.add(ring0, BorderLayout.CENTER);
+
+        hero.add(heroLeft, BorderLayout.WEST);
+        hero.add(heroRingHolder, BorderLayout.EAST);
+
         // --- 1. KHU VỰC THẺ THỐNG KÊ (TOP) ---
         statsRow = new JPanel(new GridLayout(1, 4, 20, 0));
         statsRow.setBackground(UIUtils.BG_APP);
         statsRow.setPreferredSize(new Dimension(0, 140));
+        statsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel topSection = new JPanel();
+        topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
+        topSection.setOpaque(false);
+        topSection.add(hero);
+        topSection.add(Box.createVerticalStrut(20));
+        topSection.add(statsRow);
 
         // --- 2. KHU VỰC BẢNG DANH SÁCH (BOTTOM) - card shell dùng chung ---
         JPanel tablePanel = UIUtils.createCardShell("Lớp học phần đang mở (Kỳ này)", UIUtils.MIT_RED);
@@ -56,7 +104,7 @@ public class AdminDashboardPanel extends JPanel {
         scrollTable.setBorder(new MatteBorder(1, 0, 0, 0, UIUtils.BORDER));
         tablePanel.add(scrollTable, BorderLayout.CENTER);
 
-        add(statsRow, BorderLayout.NORTH);
+        add(topSection, BorderLayout.NORTH);
         add(tablePanel, BorderLayout.CENTER);
     }
 
@@ -70,6 +118,7 @@ public class AdminDashboardPanel extends JPanel {
         int tongLHP = 0;
         double doanhThu = 0.0;
         int svNoTien = 0;
+        int lopConCho = 0;
 
         tableModel.setRowCount(0);
 
@@ -117,6 +166,7 @@ public class AdminDashboardPanel extends JPanel {
                         String lichHoc = "Thứ " + rs.getString("Thu") + " (Tiết " + rs.getString("TietHoc") + ")";
                         String siSo = daDk + " / " + sucChua;
                         String trangThai = daDk >= sucChua ? "Đã đầy" : "Còn chỗ";
+                        if (!trangThai.equals("Đã đầy")) lopConCho++;
 
                         tableModel.addRow(new Object[]{
                             rs.getString("MaLHP"), rs.getString("TenMon"), rs.getInt("SoTinChi"),
@@ -132,13 +182,21 @@ public class AdminDashboardPanel extends JPanel {
 
         // Cập nhật lại UI Thẻ thống kê (V3 - dùng UIUtils.createKpiCard, đồng bộ mockup)
         statsRow.removeAll();
-        statsRow.add(UIUtils.createKpiCard("👥", String.format("%,d SV", tongSV), "Tổng sinh viên", new Color(30, 64, 175)));
-        statsRow.add(UIUtils.createKpiCard("📚", String.format("%,d Lớp", tongLHP), "Lớp học phần mở", UIUtils.GREEN_500));
-        statsRow.add(UIUtils.createKpiCard("💰", String.format("%,.0f Đ", doanhThu), "Doanh thu dự kiến", UIUtils.MIT_ORANGE));
-        statsRow.add(UIUtils.createKpiCard("⚠", String.format("%,d SV", svNoTien), "SV nợ học phí", UIUtils.RED_500));
+        statsRow.add(UIUtils.createKpiCard("users", String.format("%,d SV", tongSV), "Tổng sinh viên", new Color(30, 64, 175)));
+        statsRow.add(UIUtils.createKpiCard("book", String.format("%,d Lớp", tongLHP), "Lớp học phần mở", UIUtils.GREEN_500));
+        statsRow.add(UIUtils.createKpiCard("dollar", String.format("%,.0f Đ", doanhThu), "Doanh thu dự kiến", UIUtils.MIT_ORANGE));
+        statsRow.add(UIUtils.createKpiCard("warning", String.format("%,d SV", svNoTien), "SV nợ học phí", UIUtils.RED_500));
 
         statsRow.revalidate();
         statsRow.repaint();
+
+        // V9: cập nhật vòng tròn tỷ lệ lớp còn chỗ trên banner chào mừng
+        int pctConCho = tongLHP > 0 ? (int) Math.round(lopConCho * 100.0 / tongLHP) : 0;
+        heroRingHolder.removeAll();
+        heroRingHolder.add(UIUtils.createRadialProgress(pctConCho, pctConCho + "%", "Còn chỗ",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+        heroRingHolder.revalidate();
+        heroRingHolder.repaint();
 
         lblTableTitle.setText("Danh sách Lớp học phần đang mở (" + maHK + ")");
     }

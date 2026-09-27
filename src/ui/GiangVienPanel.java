@@ -2,43 +2,39 @@ package ui;
 
 import service.StudentManagerService;
 import utils.UIUtils;
-import config.DBConnect;
 
 import javax.swing.*;
-import javax.swing.border.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import java.awt.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 
-public class StudentPanel extends JPanel {
+/**
+ * Khung chinh man hinh Giang vien - sidebar + CardLayout, dong bo phong cach voi
+ * StudentPanel/AdminPanel (dung chung UIUtils.createSidebarPanel/createSidebarButton).
+ */
+public class GiangVienPanel extends JPanel {
     private static final long serialVersionUID = 1L;
 
-    private StudentManagerService service;
+    private final StudentManagerService service;
+    private final String currentMaGV;
+    private String hoTen = "Đang tải...";
+    private String email = "";
+
     private CardLayout cardLayout;
     private JPanel contentArea;
-    private ArrayList<JButton> sidebarButtons = new ArrayList<>();
+    private final ArrayList<JButton> sidebarButtons = new ArrayList<>();
     private JLabel lblHeaderTitle;
 
-    private String currentMaSV;
-    private String hoTen = "Đang tải...";
-    private String maLop = "K2024";
-
-    private LichHocPanel lichHocPanel;
-    private DashboardPanel dashboardPanel;
-    private DangKyPanel dangKyPanel;
-    private DiemPanel diemPanel;
-
-    public StudentPanel(StudentManagerService service, String maSV) {
+    public GiangVienPanel(StudentManagerService service, String maGV) {
         this.service = service;
-        this.currentMaSV = maSV;
+        this.currentMaGV = maGV;
         loadHeaderInfo();
 
         setLayout(new BorderLayout());
         setBackground(UIUtils.BG_APP);
 
-        // --- 1. SIDEBAR (dùng UIUtils.createSidebarPanel — đồng bộ với AdminPanel) ---
+        // --- SIDEBAR ---
         JPanel sidebar = UIUtils.createSidebarPanel();
         sidebar.setPreferredSize(new Dimension(250, 0));
 
@@ -54,7 +50,7 @@ public class StudentPanel extends JPanel {
         brandTitle.setForeground(Color.WHITE);
         brandTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel brandSub = new JLabel("Cổng thông tin sinh viên");
+        JLabel brandSub = new JLabel("Cổng thông tin giảng viên");
         brandSub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         brandSub.setForeground(UIUtils.SIDEBAR_TEXT_MUTED);
         brandSub.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -63,7 +59,7 @@ public class StudentPanel extends JPanel {
         brand.add(brandSub);
         sidebar.add(brand);
 
-        // --- Thẻ hồ sơ SV (avatar + tên + mã SV-lớp) ---
+        // --- Profile card ---
         JPanel profileCard = new JPanel();
         profileCard.setLayout(new BoxLayout(profileCard, BoxLayout.Y_AXIS));
         profileCard.setOpaque(true);
@@ -81,14 +77,14 @@ public class StudentPanel extends JPanel {
         lblName.setAlignmentX(Component.LEFT_ALIGNMENT);
         lblName.setBorder(new EmptyBorder(8, 0, 0, 0));
 
-        JLabel lblID = new JLabel(currentMaSV + " · " + maLop);
-        lblID.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblID.setForeground(UIUtils.SIDEBAR_TEXT_MUTED);
-        lblID.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel lblEmail = new JLabel(currentMaGV + " · " + email);
+        lblEmail.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblEmail.setForeground(UIUtils.SIDEBAR_TEXT_MUTED);
+        lblEmail.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         profileCard.add(avatar);
         profileCard.add(lblName);
-        profileCard.add(lblID);
+        profileCard.add(lblEmail);
         sidebar.add(profileCard);
         sidebar.add(Box.createVerticalStrut(6));
 
@@ -99,70 +95,47 @@ public class StudentPanel extends JPanel {
         sidebar.add(sep);
         sidebar.add(Box.createVerticalStrut(6));
 
-        // --- 2. HEADER ---
+        // --- HEADER ---
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(UIUtils.BG_APP);
 
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(UIUtils.WHITE);
         header.setBorder(BorderFactory.createCompoundBorder(
-            new MatteBorder(0, 0, 1, 0, UIUtils.BORDER), new EmptyBorder(15, 30, 15, 30)
-        ));
+            new MatteBorder(0, 0, 1, 0, UIUtils.BORDER), new EmptyBorder(15, 30, 15, 30)));
 
         lblHeaderTitle = new JLabel("Trang Chủ Tổng Quan");
         lblHeaderTitle.setFont(UIUtils.FONT_TITLE);
         header.add(lblHeaderTitle, BorderLayout.WEST);
 
-        // --- 3. TẠO NÚT SIDEBAR TRƯỚC (để có Runnable điều hướng gắn cho Dashboard "Thao tác nhanh") ---
+        // --- NAV BUTTONS ---
         sidebar.add(UIUtils.createSidebarGroupLabel("Tổng quan"));
         JButton btnHome = createNavBtn("dashboard", "Trang chủ tổng quan");
         sidebar.add(btnHome);
 
-        sidebar.add(UIUtils.createSidebarGroupLabel("Học tập"));
-        JButton btnLH   = createNavBtn("calendar", "Lịch học - TKB");
-        JButton btnDiem = createNavBtn("book", "Bảng kết quả học tập");
-        JButton btnDK   = createNavBtn("edit", "Đăng ký học phần");
-        JButton btnTN   = createNavBtn("graduation", "Thẩm định tốt nghiệp");
-        sidebar.add(btnLH);
-        sidebar.add(btnDiem);
-        sidebar.add(btnDK);
-        sidebar.add(btnTN);
+        sidebar.add(UIUtils.createSidebarGroupLabel("Giảng dạy"));
+        JButton btnLopHP = createNavBtn("book", "Lớp học phần & nhập điểm");
+        JButton btnLichDay = createNavBtn("calendar", "Lịch giảng dạy");
+        sidebar.add(btnLopHP);
+        sidebar.add(btnLichDay);
 
-        sidebar.add(UIUtils.createSidebarGroupLabel("Tài chính"));
-        JButton btnCN = createNavBtn("card", "Công nợ học phí");
-        sidebar.add(btnCN);
-
-        // --- 4. CARD LAYOUT ---
+        // --- CARD LAYOUT ---
         cardLayout = new CardLayout();
         contentArea = new JPanel(cardLayout);
         contentArea.setBackground(UIUtils.BG_APP);
         contentArea.setBorder(new EmptyBorder(25, 30, 25, 30));
 
-        // Cac Runnable "Thao tac nhanh" tren Dashboard tai su dung dung switchTab nhu sidebar,
-        // dam bao bam nut tren Dashboard hay tren sidebar deu cho ra cung 1 hanh vi.
-        Runnable goDangKy = () -> switchTab(btnDK, "DANG_KY", "Đăng Ký Học Phần");
-        Runnable goDiem   = () -> switchTab(btnDiem, "DIEM", "Bảng Kết Quả Học Tập");
-        Runnable goCongNo = () -> switchTab(btnCN, "CONG_NO", "Thông Tin Công Nợ Học Phí");
-        Runnable goLichHoc = () -> switchTab(btnLH, "LICH_HOC", "Lịch Học Thời Khóa Biểu");
-
-        dashboardPanel = new DashboardPanel(currentMaSV, goDangKy, goDiem, goCongNo, goLichHoc);
-        lichHocPanel = new LichHocPanel(service, currentMaSV);
-        dangKyPanel = new DangKyPanel(service, currentMaSV);
-        diemPanel = new DiemPanel(currentMaSV);
+        GVDashboardPanel dashboardPanel = new GVDashboardPanel(service, currentMaGV, hoTen);
+        GVLopHocPhanPanel lopHocPhanPanel = new GVLopHocPhanPanel(service, currentMaGV);
+        GVLichDayPanel lichDayPanel = new GVLichDayPanel(service, currentMaGV);
 
         contentArea.add(wrapScrollable(dashboardPanel), "TRANG_CHU");
-        contentArea.add(lichHocPanel, "LICH_HOC");
-        contentArea.add(diemPanel, "DIEM");
-        contentArea.add(dangKyPanel, "DANG_KY");
-        contentArea.add(new CongNoPanel(service, currentMaSV), "CONG_NO");
-        contentArea.add(new TotNghiepPanel(service, currentMaSV), "TOT_NGHIEP");
+        contentArea.add(lopHocPhanPanel, "LOP_HOC_PHAN");
+        contentArea.add(lichDayPanel, "LICH_DAY");
 
         btnHome.addActionListener(e -> switchTab(btnHome, "TRANG_CHU", "Trang Chủ Tổng Quan"));
-        btnLH.addActionListener(e -> goLichHoc.run());
-        btnDiem.addActionListener(e -> goDiem.run());
-        btnDK.addActionListener(e -> goDangKy.run());
-        btnCN.addActionListener(e -> goCongNo.run());
-        btnTN.addActionListener(e -> switchTab(btnTN, "TOT_NGHIEP", "Thẩm Định Xét Tốt Nghiệp"));
+        btnLopHP.addActionListener(e -> switchTab(btnLopHP, "LOP_HOC_PHAN", "Lớp Học Phần & Nhập Điểm"));
+        btnLichDay.addActionListener(e -> switchTab(btnLichDay, "LICH_DAY", "Lịch Giảng Dạy"));
 
         sidebar.add(Box.createVerticalGlue());
         JSeparator sep2 = new JSeparator();
@@ -196,10 +169,6 @@ public class StudentPanel extends JPanel {
         return btn;
     }
 
-    // V6-fix: Trang chu co the vua khit hoac vuot chieu cao man hinh (VD khi them widget
-    // "Thao tac nhanh"), ma contentArea truoc gio khong the cuon -> phan noi dung phia duoi
-    // (2 dong cuoi cua Thao tac nhanh) bi cat mat hoan toan, khong cach nao xem duoc. Boc
-    // trong JScrollPane de luon xem duoc het, du man hinh nho hay lon.
     private JScrollPane wrapScrollable(JPanel content) {
         JScrollPane scroll = new JScrollPane(content);
         scroll.setBorder(null);
@@ -210,19 +179,11 @@ public class StudentPanel extends JPanel {
     }
 
     private void loadHeaderInfo() {
-        try (Connection conn = DBConnect.getConnection()) {
-            if (conn == null) return;
-            String sqlInfo = "SELECT HoTen, MaLop FROM SINH_VIEN WHERE MaSV = ?";
-            try (PreparedStatement ps = conn.prepareStatement(sqlInfo)) {
-                ps.setString(1, currentMaSV);
-                ResultSet rs = ps.executeQuery();
-                if (rs.next()) {
-                    hoTen = rs.getString("HoTen");
-                    maLop = rs.getString("MaLop");
-                    if (maLop == null || maLop.isEmpty()) maLop = "K2024";
-                }
-            }
-        } catch (Exception e) {}
+        Object[] info = service.getThongTinGV(currentMaGV);
+        if (info != null) {
+            hoTen = info[0] != null ? (String) info[0] : "Giảng viên";
+            email = info[1] != null ? (String) info[1] : "";
+        }
     }
 
     private void switchTab(JButton activeBtn, String cardName, String title) {
@@ -231,11 +192,11 @@ public class StudentPanel extends JPanel {
         cardLayout.show(contentArea, cardName);
     }
 
-    /** Avatar tròn hiển thị chữ cái đầu của tên SV (thay cho icon vector cũ). */
+    /** Avatar tròn hiển thị chữ cái đầu tên GV (giống AvatarIcon của StudentPanel). */
     class AvatarIcon implements Icon {
         private final String initial;
         AvatarIcon(String ten) {
-            String t = (ten == null || ten.isBlank()) ? "SV" : ten.trim();
+            String t = (ten == null || ten.isBlank()) ? "GV" : ten.trim();
             String[] parts = t.split("\\s+");
             this.initial = parts[parts.length - 1].substring(0, 1).toUpperCase();
         }

@@ -31,12 +31,47 @@ public class AdminBaoCaoPanel extends JPanel {
 
     private JTextField txtSearch;
     private JComboBox<String> cbFilterNo;
+    private JLabel lblHeroSub;
+    private JPanel heroRingHolder;
 
     public AdminBaoCaoPanel(StudentManagerService service) {
         this.service = service;
-        setLayout(new BorderLayout());
+        setLayout(new BorderLayout(0, 20));
         setBackground(UIUtils.BG_APP);
         setBorder(new EmptyBorder(5, 0, 0, 0));
+
+        // --- V9: banner gradient + vong tron ty le SV khong no hoc phi ---
+        JPanel hero = UIUtils.createHeroBanner();
+        hero.setLayout(new BorderLayout(20, 0));
+        hero.setBorder(new EmptyBorder(20, 28, 20, 26));
+        hero.setMaximumSize(new Dimension(6000, 108));
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel heroLeft = new JPanel();
+        heroLeft.setLayout(new BoxLayout(heroLeft, BoxLayout.Y_AXIS));
+        heroLeft.setOpaque(false);
+        JLabel lblHeroTitle = new JLabel("Báo Cáo Học Vụ & Công Nợ");
+        lblHeroTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lblHeroTitle.setForeground(Color.WHITE);
+        lblHeroTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub = new JLabel("Đang tải dữ liệu...");
+        lblHeroSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblHeroSub.setForeground(new Color(255, 255, 255, 215));
+        lblHeroSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub.setBorder(new EmptyBorder(6, 0, 0, 0));
+        heroLeft.add(Box.createVerticalGlue());
+        heroLeft.add(lblHeroTitle);
+        heroLeft.add(lblHeroSub);
+        heroLeft.add(Box.createVerticalGlue());
+
+        heroRingHolder = new JPanel(new BorderLayout());
+        heroRingHolder.setOpaque(false);
+        heroRingHolder.setPreferredSize(new Dimension(96, 96));
+        heroRingHolder.add(UIUtils.createRadialProgress(0, "0%", "Không nợ",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+
+        hero.add(heroLeft, BorderLayout.WEST);
+        hero.add(heroRingHolder, BorderLayout.EAST);
 
         JPanel wrapper = UIUtils.createCardShell("Báo Cáo Học Vụ & Công Nợ", UIUtils.MIT_RED);
         JPanel cardHeader = (JPanel) wrapper.getComponent(0);
@@ -52,7 +87,7 @@ public class AdminBaoCaoPanel extends JPanel {
         cbFilterNo.setFont(UIUtils.FONT_NORMAL);
         cbFilterNo.setBackground(Color.WHITE);
 
-        JButton btnExport = UIUtils.createSecondaryBtn("Xuất CSV");
+        JButton btnExport = UIUtils.createSecondaryBtn("download", "Xuất CSV");
         btnExport.setPreferredSize(new Dimension(110, 32));
 
         filterPanel.add(new JLabel("Tìm:"));
@@ -93,12 +128,14 @@ public class AdminBaoCaoPanel extends JPanel {
         btnExport.addActionListener(e -> exportToCSV());
 
         wrapper.add(scrollTable, BorderLayout.CENTER);
+        add(hero, BorderLayout.NORTH);
         add(wrapper, BorderLayout.CENTER);
         loadReportData();
     }
 
     private void loadReportData() {
         tableModel.setRowCount(0);
+        int tongSV = 0, khongNo = 0;
         String sql = "SELECT s.MaSV, s.HoTen, s.MaLop, s.MaCTDT, " +
                      "ISNULL((SELECT SUM(CAST(m.SoTinChi AS INT)) FROM KET_QUA_DANG_KY kq JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP JOIN MON_HOC m ON lhp.MaMon = m.MaMon WHERE kq.MaSV = s.MaSV AND kq.TrangThai = N'Đạt'), 0) AS TongTC, " +
                      "ISNULL((SELECT SUM(CAST(TongTienPhaiDong AS FLOAT) - CAST(SoTienDaDong AS FLOAT)) FROM CONG_NO_HOC_PHI WHERE MaSV = s.MaSV AND CAST(TongTienPhaiDong AS FLOAT) - CAST(SoTienDaDong AS FLOAT) > 0), 0) AS TongNo " +
@@ -109,12 +146,22 @@ public class AdminBaoCaoPanel extends JPanel {
             while (rs.next()) {
                 double no = rs.getDouble("TongNo");
                 String trangThai = no > 0 ? "CÒN NỢ" : "Bình thường";
+                tongSV++;
+                if (no <= 0) khongNo++;
                 tableModel.addRow(new Object[]{
                     rs.getString("MaSV"), rs.getString("HoTen"), rs.getString("MaLop"), rs.getString("MaCTDT"),
                     rs.getInt("TongTC"), String.format("%,.0f", no), trangThai
                 });
             }
         } catch (Exception e) { e.printStackTrace(); }
+
+        lblHeroSub.setText(tongSV + " sinh viên  ·  " + khongNo + " đã nộp đủ học phí");
+        int pct = tongSV > 0 ? (int) Math.round(khongNo * 100.0 / tongSV) : 0;
+        heroRingHolder.removeAll();
+        heroRingHolder.add(UIUtils.createRadialProgress(pct, pct + "%", "Không nợ",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+        heroRingHolder.revalidate();
+        heroRingHolder.repaint();
     }
 
     private void applyFilters() {

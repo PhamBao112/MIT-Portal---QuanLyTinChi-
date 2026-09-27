@@ -18,7 +18,8 @@ public class AdminCongNoPanel extends JPanel {
 
     private DefaultTableModel model;
     private JTable table;
-    private JLabel lblTongNoToanTruong;
+    private JLabel lblHeroSub;
+    private JPanel heroRingHolder;
 
     private JTextField txtMaPhieu, txtTienThu;
 
@@ -27,13 +28,40 @@ public class AdminCongNoPanel extends JPanel {
         setBackground(UIUtils.BG_APP);
         setBorder(new EmptyBorder(5, 0, 0, 0));
 
-        JPanel tableWrapper = UIUtils.createCardShell("Bảng Danh Sách Công Nợ Học Phí Toàn Trường", UIUtils.MIT_RED);
+        // --- V9: banner gradient + vong tron ty le da thu hoc phi ---
+        JPanel hero = UIUtils.createHeroBanner();
+        hero.setLayout(new BorderLayout(20, 0));
+        hero.setBorder(new EmptyBorder(20, 28, 20, 26));
+        hero.setMaximumSize(new Dimension(6000, 108));
+        hero.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel tableHeader = (JPanel) tableWrapper.getComponent(0);
-        lblTongNoToanTruong = new JLabel("Tổng nợ toàn trường: 0 VNĐ");
-        lblTongNoToanTruong.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTongNoToanTruong.setForeground(UIUtils.RED_500);
-        tableHeader.add(lblTongNoToanTruong, BorderLayout.EAST);
+        JPanel heroLeft = new JPanel();
+        heroLeft.setLayout(new BoxLayout(heroLeft, BoxLayout.Y_AXIS));
+        heroLeft.setOpaque(false);
+        JLabel lblHeroTitle = new JLabel("Công Nợ Học Phí Toàn Trường");
+        lblHeroTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lblHeroTitle.setForeground(Color.WHITE);
+        lblHeroTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub = new JLabel("Đang tải dữ liệu...");
+        lblHeroSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblHeroSub.setForeground(new Color(255, 255, 255, 215));
+        lblHeroSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblHeroSub.setBorder(new EmptyBorder(6, 0, 0, 0));
+        heroLeft.add(Box.createVerticalGlue());
+        heroLeft.add(lblHeroTitle);
+        heroLeft.add(lblHeroSub);
+        heroLeft.add(Box.createVerticalGlue());
+
+        heroRingHolder = new JPanel(new BorderLayout());
+        heroRingHolder.setOpaque(false);
+        heroRingHolder.setPreferredSize(new Dimension(96, 96));
+        heroRingHolder.add(UIUtils.createRadialProgress(0, "0%", "Đã thu",
+            UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+
+        hero.add(heroLeft, BorderLayout.WEST);
+        hero.add(heroRingHolder, BorderLayout.EAST);
+
+        JPanel tableWrapper = UIUtils.createCardShell("Bảng Danh Sách Công Nợ Học Phí", UIUtils.MIT_RED);
 
         String[] cols = {"Mã Phiếu", "Mã SV", "Họ Tên SV", "Học Kỳ", "Phải Đóng", "Đã Đóng", "Còn Nợ", "Trạng Thái"};
         model = new DefaultTableModel(cols, 0) {
@@ -59,6 +87,17 @@ public class AdminCongNoPanel extends JPanel {
         scroll.setBorder(new MatteBorder(1, 0, 0, 0, UIUtils.BORDER));
         tableWrapper.add(scroll, BorderLayout.CENTER);
 
+        JPanel topSection = new JPanel();
+        topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
+        topSection.setOpaque(false);
+        topSection.add(hero);
+        topSection.add(Box.createVerticalStrut(20));
+
+        JPanel centerWrapper = new JPanel(new BorderLayout());
+        centerWrapper.setOpaque(false);
+        centerWrapper.add(topSection, BorderLayout.NORTH);
+        centerWrapper.add(tableWrapper, BorderLayout.CENTER);
+
         JPanel formWrapper = UIUtils.createCardShell("Ghi Nhận Thanh Toán Học Phí", UIUtils.MIT_RED);
         formWrapper.setBorder(new EmptyBorder(0, 0, 0, 0));
 
@@ -80,7 +119,7 @@ public class AdminCongNoPanel extends JPanel {
         btnGrid.setOpaque(false);
         btnGrid.setBorder(new EmptyBorder(4, 20, 16, 20));
 
-        JButton btnThuTien = UIUtils.createPrimaryBtn("Xác nhận thu tiền");
+        JButton btnThuTien = UIUtils.createPrimaryBtn("check", "Xác nhận thu tiền");
         btnThuTien.setPreferredSize(new Dimension(170, 38));
 
         btnGrid.add(btnThuTien);
@@ -130,13 +169,15 @@ public class AdminCongNoPanel extends JPanel {
             }
         });
 
-        add(tableWrapper, BorderLayout.CENTER);
+        add(centerWrapper, BorderLayout.CENTER);
         add(formWrapper, BorderLayout.SOUTH);
     }
 
     public void updateData(String maHK) {
         model.setRowCount(0);
         double tongNo = 0;
+        double tongPhaiDong = 0;
+        double tongDaDong = 0;
 
         String sql = "SELECT c.MaPhieu, c.MaSV, s.HoTen, c.MaHK, c.TongTienPhaiDong, c.SoTienDaDong, c.TrangThai " +
                      "FROM CONG_NO_HOC_PHI c JOIN SINH_VIEN s ON c.MaSV = s.MaSV " +
@@ -150,13 +191,24 @@ public class AdminCongNoPanel extends JPanel {
                 double no = phaiDong - daDong;
 
                 if (no > 0) tongNo += no;
+                tongPhaiDong += phaiDong;
+                tongDaDong += daDong;
 
                 model.addRow(new Object[]{
                     rs.getString("MaPhieu"), rs.getString("MaSV"), rs.getString("HoTen"), rs.getString("MaHK"),
                     String.format("%,.0f đ", phaiDong), String.format("%,.0f đ", daDong), String.format("%,.0f đ", Math.max(no, 0)), rs.getString("TrangThai")
                 });
             }
-            lblTongNoToanTruong.setText("Tổng nợ toàn trường: " + String.format("%,.0f VNĐ", tongNo));
+
+            lblHeroSub.setText("Tổng phải thu: " + String.format("%,.0f đ", tongPhaiDong)
+                + "  ·  Còn nợ: " + String.format("%,.0f đ", tongNo));
+
+            int pctDaThu = tongPhaiDong > 0 ? (int) Math.round(tongDaDong * 100.0 / tongPhaiDong) : 0;
+            heroRingHolder.removeAll();
+            heroRingHolder.add(UIUtils.createRadialProgress(pctDaThu, pctDaThu + "%", "Đã thu",
+                UIUtils.MIT_YELLOW, new Color(255, 255, 255, 55), Color.WHITE), BorderLayout.CENTER);
+            heroRingHolder.revalidate();
+            heroRingHolder.repaint();
         } catch (Exception e) {
             e.printStackTrace();
         }
