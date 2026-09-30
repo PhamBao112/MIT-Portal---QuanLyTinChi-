@@ -551,4 +551,54 @@ public class TruongHocDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return ket;
     }
+
+    // ==========================================================
+    // 8. NGHIỆP VỤ CỐ VẤN HỌC TẬP (Giảng viên làm cố vấn cho 1 hay nhiều lớp sinh hoạt)
+    // ==========================================================
+
+    // Danh sach MaLop (lop sinh hoat, vd 'K2021A') ma GV nay dang lam co van - 1 GV co the
+    // phu trach nhieu lop tuy vao cach gan trong bang CO_VAN_HOC_TAP.
+    public List<String> getLopCoVanByGV(String maGV) {
+        List<String> ket = new ArrayList<>();
+        String sql = "SELECT MaLop FROM CO_VAN_HOC_TAP WHERE MaGV = ? ORDER BY MaLop";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maGV);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) ket.add(rs.getString("MaLop"));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
+    }
+
+    // Danh sach SV trong 1 lop sinh hoat, kem GPA (tinh theo trong so tin chi, dung cong thuc
+    // da thong nhat trong toan bo project: SUM(diem*tinchi)/SUM(tinchi), CHI tinh tren cac mon
+    // da co diem - N'Chua co diem' khong tinh vao), tin chi tich luy (chi cong mon N'Dat') va
+    // so mon dang no (N'Khong dat').
+    public List<Object[]> getSinhVienTrongLopCoVan(String maLop) {
+        List<Object[]> ket = new ArrayList<>();
+        String sql = "SELECT sv.MaSV, sv.HoTen, sv.TrangThaiHocTap, " +
+                     "ISNULL(SUM(CASE WHEN kq.TrangThai <> N'Chưa có điểm' THEN kq.DiemTongKet * mh.SoTinChi ELSE 0 END) / " +
+                     "      NULLIF(SUM(CASE WHEN kq.TrangThai <> N'Chưa có điểm' THEN mh.SoTinChi ELSE 0 END), 0), 0) AS GPA, " +
+                     "ISNULL(SUM(CASE WHEN kq.TrangThai = N'Đạt' THEN mh.SoTinChi ELSE 0 END), 0) AS TinChiTichLuy, " +
+                     "ISNULL(SUM(CASE WHEN kq.TrangThai = N'Không đạt' THEN 1 ELSE 0 END), 0) AS SoMonNo " +
+                     "FROM SINH_VIEN sv " +
+                     "LEFT JOIN KET_QUA_DANG_KY kq ON kq.MaSV = sv.MaSV " +
+                     "LEFT JOIN LOP_HOC_PHAN lhp ON kq.MaLHP = lhp.MaLHP " +
+                     "LEFT JOIN MON_HOC mh ON lhp.MaMon = mh.MaMon " +
+                     "WHERE sv.MaLop = ? " +
+                     "GROUP BY sv.MaSV, sv.HoTen, sv.TrangThaiHocTap " +
+                     "ORDER BY sv.HoTen";
+        try (Connection conn = DBConnect.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maLop);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ket.add(new Object[]{
+                        rs.getString("MaSV"), rs.getString("HoTen"), rs.getString("TrangThaiHocTap"),
+                        rs.getDouble("GPA"), rs.getInt("TinChiTichLuy"), rs.getInt("SoMonNo")
+                    });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ket;
+    }
 }

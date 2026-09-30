@@ -119,6 +119,10 @@ public class GiangVienPanel extends JPanel {
         sidebar.add(btnLopHP);
         sidebar.add(btnLichDay);
 
+        sidebar.add(UIUtils.createSidebarGroupLabel("Cố vấn học tập"));
+        JButton btnCoVan = createNavBtn("users", "Lớp cố vấn");
+        sidebar.add(btnCoVan);
+
         // --- CARD LAYOUT ---
         cardLayout = new CardLayout();
         contentArea = new JPanel(cardLayout);
@@ -128,14 +132,17 @@ public class GiangVienPanel extends JPanel {
         GVDashboardPanel dashboardPanel = new GVDashboardPanel(service, currentMaGV, hoTen);
         GVLopHocPhanPanel lopHocPhanPanel = new GVLopHocPhanPanel(service, currentMaGV);
         GVLichDayPanel lichDayPanel = new GVLichDayPanel(service, currentMaGV);
+        GVCoVanPanel coVanPanel = new GVCoVanPanel(service, currentMaGV);
 
         contentArea.add(wrapScrollable(dashboardPanel), "TRANG_CHU");
         contentArea.add(lopHocPhanPanel, "LOP_HOC_PHAN");
         contentArea.add(lichDayPanel, "LICH_DAY");
+        contentArea.add(coVanPanel, "CO_VAN");
 
         btnHome.addActionListener(e -> switchTab(btnHome, "TRANG_CHU", "Trang Chủ Tổng Quan"));
         btnLopHP.addActionListener(e -> switchTab(btnLopHP, "LOP_HOC_PHAN", "Lớp Học Phần & Nhập Điểm"));
         btnLichDay.addActionListener(e -> switchTab(btnLichDay, "LICH_DAY", "Lịch Giảng Dạy"));
+        btnCoVan.addActionListener(e -> switchTab(btnCoVan, "CO_VAN", "Lớp Cố Vấn Học Tập"));
 
         sidebar.add(Box.createVerticalGlue());
         JSeparator sep2 = new JSeparator();

@@ -24,7 +24,7 @@ public class GVThongKeDiemDanhDialog extends JDialog {
 
     public GVThongKeDiemDanhDialog(Window owner, StudentManagerService service, String maLHP, String tenMonHienThi) {
         super(owner, "Thống kê điểm danh - " + tenMonHienThi, ModalityType.APPLICATION_MODAL);
-        setSize(720, 540);
+        setSize(820, 540);
         setLocationRelativeTo(owner);
         setLayout(new BorderLayout());
         getContentPane().setBackground(UIUtils.BG_APP);
@@ -70,6 +70,11 @@ public class GVThongKeDiemDanhDialog extends JDialog {
         JTable table = new JTable(tableModel);
         UIUtils.styleTable(table);
         table.setRowHeight(38);
+
+        int[] widths = {90, 170, 90, 70, 110, 100, 130};
+        for (int i = 0; i < widths.length && i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected, boolean hasFocus, int row, int col) {

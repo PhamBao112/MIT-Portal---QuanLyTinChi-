@@ -280,6 +280,17 @@ public class StudentManagerService {
     }
 
     // ==========================================================
+    // CỐ VẤN HỌC TẬP
+    // ==========================================================
+    public List<String> getLopCoVanByGV(String maGV) {
+        return dao.getLopCoVanByGV(maGV);
+    }
+
+    public List<Object[]> getSinhVienTrongLopCoVan(String maLop) {
+        return dao.getSinhVienTrongLopCoVan(maLop);
+    }
+
+    // ==========================================================
     // XUẤT BẢNG ĐIỂM LỚP HỌC PHẦN RA EXCEL
     // ==========================================================
     public void xuatBangDiemExcel(String maLHP, String tenMon, String tenHK, String filePath) throws BusinessLogicException {

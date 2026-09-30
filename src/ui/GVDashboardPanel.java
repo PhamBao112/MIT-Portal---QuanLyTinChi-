@@ -78,8 +78,47 @@ public class GVDashboardPanel extends JPanel {
         northWrap.add(kpiPanel);
         northWrap.add(Box.createVerticalStrut(15));
         northWrap.add(buildLichHomNayCard(lop));
+        northWrap.add(Box.createVerticalStrut(15));
+        northWrap.add(buildTongQuanLopCard(lop));
 
         add(northWrap, BorderLayout.NORTH);
+    }
+
+    // Bang tong quan toan bo lop dang day, lap khoang trong ben duoi cac card KPI/lich hom nay
+    // - truoc day trang Tong quan chi co 2 khoi noi dung tren cung, phia duoi trong rong rat
+    // mat can doi.
+    private JPanel buildTongQuanLopCard(List<Object[]> lop) {
+        JPanel card = UIUtils.createCardShell("Tổng quan các lớp đang dạy", UIUtils.MIT_RED);
+
+        String[] columns = {"Mã LHP", "Môn học", "Học kỳ", "Sĩ số / Sức chứa", "Lịch học"};
+        DefaultTableModel model = new DefaultTableModel(columns, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        for (Object[] row : lop) {
+            String tenHK = row[4] != null ? (String) row[4] : (String) row[3];
+            int sucChua = (int) row[5];
+            int siSo = (int) row[6];
+            String thu = row[7] != null ? (String) row[7] : "Chưa xếp";
+            String tiet = row[8] != null ? (String) row[8] : "";
+            String lichHoc = tiet.isEmpty() ? thu : (thu + ", tiết " + tiet);
+            model.addRow(new Object[]{ row[0], row[1], tenHK, siSo + " / " + sucChua, lichHoc });
+        }
+
+        JTable table = new JTable(model);
+        UIUtils.styleTable(table);
+        table.setRowHeight(36);
+        int[] widths = {90, 220, 150, 130, 150};
+        for (int i = 0; i < widths.length && i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(new MatteBorder(1, 0, 0, 0, UIUtils.BORDER));
+        scroll.setPreferredSize(new Dimension(100, Math.min(36 * (lop.size() + 1) + 10, 320)));
+        card.add(scroll, BorderLayout.CENTER);
+        card.setMaximumSize(new Dimension(6000, 360));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return card;
     }
 
     // Loc ra cac lop co Thu trung voi hom nay VA hom nay nam trong khoang

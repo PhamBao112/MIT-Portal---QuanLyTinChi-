@@ -36,7 +36,7 @@ public class GVDiemDanhDialog extends JDialog {
         this.maGV = maGV;
         this.maLHP = maLHP;
 
-        setSize(720, 560);
+        setSize(820, 560);
         setLocationRelativeTo(owner);
         setLayout(new BorderLayout());
         getContentPane().setBackground(UIUtils.BG_APP);
@@ -84,6 +84,11 @@ public class GVDiemDanhDialog extends JDialog {
         table.setRowHeight(38);
         JComboBox<String> comboEditor = new JComboBox<>(TRANG_THAI_OPTIONS);
         table.getColumnModel().getColumn(2).setCellEditor(new DefaultCellEditor(comboEditor));
+
+        int[] widths = {90, 170, 130, 220};
+        for (int i = 0; i < widths.length && i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
 
         loadData();
 

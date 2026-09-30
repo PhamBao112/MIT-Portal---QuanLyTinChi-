@@ -11,19 +11,26 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
  * Man hinh "Lop hoc phan" cua Giang vien: liet ke cac lop GV nay dang day,
  * double-click 1 dong (hoac bam nut) de mo dialog nhap diem cho lop do.
+ * Co combo loc theo Hoc ky vi 1 GV thuong day nhieu hoc ky cung luc, danh
+ * sach phang se rat lan lon neu khong loc.
  */
 public class GVLopHocPhanPanel extends JPanel {
+
+    private static final String TAT_CA_HOC_KY = "Tất cả học kỳ";
 
     private final StudentManagerService service;
     private final String maGV;
     private DefaultTableModel tableModel;
     private JTable table;
-    private List<Object[]> rawData = new ArrayList<>();
+    private JComboBox<String> cbHocKy;
+    private List<Object[]> rawData = new ArrayList<>();      // toan bo lop GV nay day (chua loc)
+    private List<Object[]> displayedData = new ArrayList<>(); // dung y voi cac dong dang hien trong bang
 
     public GVLopHocPhanPanel(StudentManagerService service, String maGV) {
         this.service = service;
@@ -43,10 +50,14 @@ public class GVLopHocPhanPanel extends JPanel {
         lblTitle.setFont(UIUtils.FONT_TITLE);
         topBar.add(lblTitle, BorderLayout.WEST);
 
+        JPanel topRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        topRight.setBackground(UIUtils.BG_APP);
+        topRight.add(new JLabel("Học kỳ:"));
+        cbHocKy = new JComboBox<>();
+        cbHocKy.addActionListener(e -> applyFilter());
+        topRight.add(cbHocKy);
         JButton btnRefresh = UIUtils.createSecondaryBtn("refresh", "Tải lại");
         btnRefresh.addActionListener(e -> loadData());
-        JPanel topRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        topRight.setBackground(UIUtils.BG_APP);
         topRight.add(btnRefresh);
         topBar.add(topRight, BorderLayout.EAST);
 
@@ -94,6 +105,8 @@ public class GVLopHocPhanPanel extends JPanel {
         btnThongKe.addActionListener(e -> moThongKeDiemDanh());
         JButton btnSoDauBai = UIUtils.createSecondaryBtn("book", "Sổ đầu bài");
         btnSoDauBai.addActionListener(e -> moSoDauBai());
+        JButton btnPhoDiem = UIUtils.createSecondaryBtn("chart", "Xem phổ điểm");
+        btnPhoDiem.addActionListener(e -> moPhoDiem());
         JButton btnNhapDiem = UIUtils.createPrimaryBtn("edit", "Nhập điểm lớp đã chọn");
         btnNhapDiem.addActionListener(e -> moNhapDiem());
         JPanel footerRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
@@ -101,6 +114,7 @@ public class GVLopHocPhanPanel extends JPanel {
         footerRight.add(btnDiemDanh);
         footerRight.add(btnThongKe);
         footerRight.add(btnSoDauBai);
+        footerRight.add(btnPhoDiem);
         footerRight.add(btnNhapDiem);
         footer.add(footerRight, BorderLayout.EAST);
         tableContainer.add(footer, BorderLayout.SOUTH);
@@ -110,23 +124,53 @@ public class GVLopHocPhanPanel extends JPanel {
     }
 
     private void loadData() {
-        tableModel.setRowCount(0);
         rawData = service.getLopHocPhanByGV(maGV);
+
+        // Nap lai danh sach hoc ky trong combo (giu nguyen lua chon cu neu con ton tai)
+        String dangChon = (String) cbHocKy.getSelectedItem();
+        LinkedHashSet<String> dsHocKy = new LinkedHashSet<>();
+        dsHocKy.add(TAT_CA_HOC_KY);
         for (Object[] row : rawData) {
-            // row: MaLHP, TenMon, SoTinChi, MaHK, TenHK, SucChua, SiSo, Thu, TietHoc, PhongHoc, NgayBatDauHoc, NgayKetThucHoc
+            String tenHK = row[4] != null ? (String) row[4] : (String) row[3];
+            dsHocKy.add(tenHK);
+        }
+        cbHocKy.removeAllItems();
+        for (String hk : dsHocKy) cbHocKy.addItem(hk);
+        if (dangChon != null && dsHocKy.contains(dangChon)) {
+            cbHocKy.setSelectedItem(dangChon);
+        } else {
+            cbHocKy.setSelectedIndex(0); // mac dinh "Tat ca hoc ky"
+        }
+
+        applyFilter();
+    }
+
+    // Loc rawData theo hoc ky dang chon trong combo, do lai bang + dong bo displayedData
+    // (displayedData phai dung thu tu voi cac dong tren bang de cac ham lay theo row-index
+    // - moNhapDiem, moDiemDanh,... - khong bi lech du lieu).
+    private void applyFilter() {
+        if (tableModel == null) return; // combo con goi actionListener trong luc dang khoi tao
+        String hocKyChon = (String) cbHocKy.getSelectedItem();
+
+        tableModel.setRowCount(0);
+        displayedData = new ArrayList<>();
+
+        for (Object[] row : rawData) {
+            String tenHK = row[4] != null ? (String) row[4] : (String) row[3];
+            if (hocKyChon != null && !hocKyChon.equals(TAT_CA_HOC_KY) && !hocKyChon.equals(tenHK)) continue;
+
             String maLHP = (String) row[0];
             String tenMon = (String) row[1];
             int soTC = (int) row[2];
-            String tenHK = row[4] != null ? (String) row[4] : (String) row[3];
             int sucChua = (int) row[5];
             int siSo = (int) row[6];
             String thu = row[7] != null ? (String) row[7] : "Chưa xếp";
             String tiet = row[8] != null ? (String) row[8] : "";
             String phong = row[9] != null ? (String) row[9] : "Chưa xếp";
-
             String lichHoc = tiet.isEmpty() ? thu : (thu + ", tiết " + tiet);
 
             tableModel.addRow(new Object[]{ maLHP, tenMon, soTC, tenHK, siSo + " / " + sucChua, lichHoc, phong });
+            displayedData.add(row);
         }
     }
 
@@ -153,8 +197,8 @@ public class GVLopHocPhanPanel extends JPanel {
         }
         String maLHP = (String) tableModel.getValueAt(row, 0);
         String tenMon = (String) tableModel.getValueAt(row, 1);
-        java.util.Date ngayBatDau = row < rawData.size() ? (java.util.Date) rawData.get(row)[10] : null;
-        java.util.Date ngayKetThuc = row < rawData.size() ? (java.util.Date) rawData.get(row)[11] : null;
+        java.util.Date ngayBatDau = row < displayedData.size() ? (java.util.Date) displayedData.get(row)[10] : null;
+        java.util.Date ngayKetThuc = row < displayedData.size() ? (java.util.Date) displayedData.get(row)[11] : null;
 
         if (ngayBatDau == null || ngayKetThuc == null) {
             JOptionPane.showMessageDialog(this, "Lớp này chưa được xếp lịch (chưa có ngày bắt đầu/kết thúc học), không thể điểm danh lúc này.", "Thông báo", JOptionPane.WARNING_MESSAGE);
@@ -188,8 +232,8 @@ public class GVLopHocPhanPanel extends JPanel {
         }
         String maLHP = (String) tableModel.getValueAt(row, 0);
         String tenMon = (String) tableModel.getValueAt(row, 1);
-        java.util.Date ngayBatDau = row < rawData.size() ? (java.util.Date) rawData.get(row)[10] : null;
-        java.util.Date ngayKetThuc = row < rawData.size() ? (java.util.Date) rawData.get(row)[11] : null;
+        java.util.Date ngayBatDau = row < displayedData.size() ? (java.util.Date) displayedData.get(row)[10] : null;
+        java.util.Date ngayKetThuc = row < displayedData.size() ? (java.util.Date) displayedData.get(row)[11] : null;
 
         if (ngayBatDau == null || ngayKetThuc == null) {
             JOptionPane.showMessageDialog(this, "Lớp này chưa được xếp lịch (chưa có ngày bắt đầu/kết thúc học), chưa thể ghi sổ đầu bài.", "Thông báo", JOptionPane.WARNING_MESSAGE);
@@ -198,6 +242,20 @@ public class GVLopHocPhanPanel extends JPanel {
 
         Window owner = SwingUtilities.getWindowAncestor(this);
         GVSoDauBaiDialog dialog = new GVSoDauBaiDialog(owner, service, maGV, maLHP, tenMon, ngayBatDau, ngayKetThuc);
+        dialog.setVisible(true);
+    }
+
+    private void moPhoDiem() {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn 1 lớp học phần trước!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String maLHP = (String) tableModel.getValueAt(row, 0);
+        String tenMon = (String) tableModel.getValueAt(row, 1);
+
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        GVPhoDiemDialog dialog = new GVPhoDiemDialog(owner, service, maLHP, tenMon);
         dialog.setVisible(true);
     }
 }
